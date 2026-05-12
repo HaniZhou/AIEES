@@ -1,0 +1,566 @@
+/* --- 页面架构 --- */
+.course-stu-page {
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  background-color: #F8F9FA;
+  overflow: hidden;
+  position: relative;
+}
+
+.main-body {
+  flex: 1;
+  display: flex;
+  overflow: hidden;
+}
+
+/* === 左侧栏 === */
+.left-panel {
+  width: 25%;
+  background: #FFF;
+  border-right: 1px solid #E0E0E0;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+
+.left-panel-inner {
+  width: 100%;
+  max-width: 280px;
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.course-info-card {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+}
+
+.course-cover {
+  width: 100%;
+  aspect-ratio: 16/9;
+  border-radius: 12px;
+  object-fit: cover;
+}
+
+.course-name {
+  margin-top: 8px;
+  font-size: 16px;
+  font-weight: bold;
+  color: #333;
+}
+
+.course-teacher {
+  font-size: 14px;
+  color: #666;
+  margin-top: 4px;
+}
+
+/* 左侧导航 */
+.view-switcher-col {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  background: transparent;
+}
+
+.switch-tab-row {
+  position: relative;
+  height: 48px;
+  display: flex;
+  align-items: center;
+  padding-left: 16px;
+  font-size: 15px;
+  color: #666;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: 0.2s;
+}
+
+.switch-tab-row:hover {
+  background: #F8F9FA;
+}
+
+.switch-tab-row.active {
+  color: #4A90E2;
+  font-weight: bold;
+  background: #F0F6FF;
+}
+
+.active-indicator {
+  position: absolute;
+  left: 0;
+  top: 12px;
+  bottom: 12px;
+  width: 4px;
+  background: #4A90E2;
+  border-radius: 0 4px 4px 0;
+}
+
+/* === 右侧内容区 === */
+.right-panel {
+  width: 75%;
+  background: #F8F9FA;
+  display: flex;
+  flex-direction: column;
+  position: relative;
+}
+
+.right-top-content {
+  flex: 1;
+  padding: 24px;
+  overflow-y: auto;
+  scrollbar-width: none;
+  position: relative;
+}
+
+.right-top-content::-webkit-scrollbar {
+  display: none;
+}
+
+.blur-vertical {
+  -webkit-mask-image: linear-gradient(to bottom, transparent 0%, black 2%, black 98%, transparent 100%);
+  mask-image: linear-gradient(to bottom, transparent 0%, black 2%, black 98%, transparent 100%);
+}
+
+/* 列表视图 */
+.chapter-view, .task-view {
+  max-width: 900px;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  padding: 16px 0;
+}
+
+.chapter-group {
+  background: #FFF;
+  border-radius: 12px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.02);
+  margin-bottom: 12px;
+  overflow: hidden;
+}
+
+.chapter-header {
+  padding: 16px;
+  background: #F5F7FA;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  cursor: pointer;
+}
+
+.chapter-title {
+  font-size: 16px;
+  font-weight: bold;
+  color: #333;
+}
+
+.arrow-icon {
+  transition: transform 0.3s;
+  color: #999;
+}
+
+.arrow-icon.is-expanded {
+  transform: rotate(90deg);
+}
+
+.sub-task-list {
+  max-height: 0;
+  transition: max-height 0.3s;
+  overflow: hidden;
+}
+
+.sub-task-list.is-expanded {
+  max-height: 1000px;
+}
+
+.sub-task-item {
+  display: flex;
+  align-items: center;
+  padding: 12px 16px 12px 24px;
+  border-bottom: 1px solid #F5F5F5;
+  cursor: pointer;
+}
+
+.sub-task-item:hover {
+  background: #F9F9F9;
+}
+
+.sub-task-item-left {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.status-icon {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #FFF;
+  font-size: 12px;
+}
+
+.status-done {
+  background: #10B981;
+}
+
+.status-pending {
+  background: #E0E0E0;
+  color: #666;
+}
+
+.sub-task-name {
+  font-size: 14px;
+  color: #333;
+}
+
+/* 任务列表基础卡片 */
+.task-item-wrapper {
+  margin-bottom: 12px;
+}
+
+.gai-task-wrapper {
+  margin-bottom: 12px;
+}
+
+.task-card {
+  display: flex;
+  align-items: center;
+  background: #FFF;
+  padding: 16px;
+  border-radius: 12px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.02);
+  cursor: pointer;
+  position: relative;
+  z-index: 2;
+}
+
+.task-col-left {
+  width: 40px;
+}
+
+.task-type-icon {
+  font-size: 24px;
+  color: #4A90E2;
+}
+
+.task-col-middle {
+  flex: 1;
+  padding: 0 12px;
+  font-size: 15px;
+  color: #333;
+  font-weight: 500;
+}
+
+.task-col-right {
+  display: flex;
+  align-items: center;
+  color: #666;
+  font-size: 13px;
+}
+
+.ml-12 {
+  margin-left: 12px;
+}
+
+.status-text {
+  color: #10B981;
+  font-weight: bold;
+}
+
+/* 新增：截止时间常规样式 */
+.deadline-text {
+  font-size: 12px;
+  color: #999;
+  margin-right: 8px;
+  white-space: nowrap;
+}
+
+/* 新增：已截止状态样式 */
+.expired-text {
+  color: #ee0a24;
+  font-weight: 500;
+  margin-right: 8px;
+}
+
+/* ======================================================== */
+/* === GAI 任务：向下弹出的手风琴详情面板 (核心需求) === */
+/* ======================================================== */
+.gai-task-detail-accordion {
+  max-height: 0;
+  overflow: hidden;
+  transition: max-height 0.4s cubic-bezier(0.25, 0.8, 0.25, 1), opacity 0.3s;
+  opacity: 0;
+  background: #FFF;
+  margin: 0 4px;
+  border-radius: 0 0 12px 12px;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.06);
+  transform: translateY(-8px);
+}
+
+/* 展开时，自适应内容高度 */
+.gai-task-detail-accordion.is-expanded {
+  max-height: 500px; /* 给予足够安全的最大值防止被截断 */
+  opacity: 1;
+  transform: translateY(0);
+}
+
+/* 修改：取消原固定的 70vh 高度，改为自适应，撑起手风琴内部空间 */
+.gai-detail-inner {
+  height: auto;
+  min-height: 100px;
+  display: flex;
+  flex-direction: column;
+  padding: 16px 20px 20px 20px;
+}
+
+/* 1. 描述文本栏 */
+.gai-desc-bar {
+  background: #F0F6FF;
+  border-left: 4px solid #4A90E2;
+  padding: 12px 16px;
+  border-radius: 4px;
+  font-size: 14px;
+  color: #333;
+  margin-bottom: 16px;
+  line-height: 1.5;
+  flex-shrink: 0;
+}
+
+.gai-desc-bar strong {
+  color: #4A90E2;
+}
+
+/* 2. GAI 对话框区域样式保留（已废弃不用，但为防外部依赖保留结构不删） */
+.gai-chat-box {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  background: #FAFAFA;
+  border: 1px solid #EBEBEB;
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+.gai-chat-history {
+  flex: 1;
+  padding: 16px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  scroll-behavior: smooth;
+}
+
+.gai-chat-input {
+  padding: 12px 16px;
+  background-color: #FFFFFF;
+  border-top: 1px solid #EBEBEB;
+  display: flex;
+  gap: 12px;
+  align-items: flex-end;
+}
+
+.chat-field {
+  background-color: #F5F7FA;
+  border-radius: 16px;
+  padding: 10px 16px;
+}
+
+.send-btn {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background-color: #4A90E2;
+  color: #FFFFFF;
+  border: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 18px;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: 0.2s;
+}
+
+.send-btn:disabled {
+  background-color: #D9D9D9;
+  cursor: not-allowed;
+}
+
+/* 聊天气泡样式复用 */
+.message-wrapper {
+  display: flex;
+  width: 100%;
+}
+
+.message-wrapper.left {
+  justify-content: flex-start;
+}
+
+.message-wrapper.right {
+  justify-content: flex-end;
+}
+
+.message-bubble {
+  max-width: 80%;
+  padding: 10px 14px;
+  border-radius: 12px;
+  font-size: 14px;
+  line-height: 1.6;
+  word-wrap: break-word;
+}
+
+.message-wrapper.left .message-bubble {
+  background-color: #FFFFFF;
+  color: #333;
+  border: 1px solid #EBEBEB;
+  border-bottom-left-radius: 4px;
+}
+
+.message-wrapper.right .message-bubble {
+  background-color: #4A90E2;
+  color: #FFFFFF;
+  border-bottom-right-radius: 4px;
+}
+
+.message-wrapper.right .message-bubble :deep(*) {
+  color: #FFFFFF !important;
+}
+
+/* 动态打字和光标 */
+.loading-bubble {
+  display: flex;
+  gap: 4px;
+  align-items: center;
+  min-width: 40px;
+}
+
+.dot {
+  width: 6px;
+  height: 6px;
+  background-color: #999;
+  border-radius: 50%;
+  animation: bounce 1.4s infinite ease-in-out both;
+}
+
+.dot:nth-child(1) {
+  animation-delay: -0.32s;
+}
+
+.dot:nth-child(2) {
+  animation-delay: -0.16s;
+}
+
+@keyframes bounce {
+  0%, 80%, 100% { transform: scale(0); }
+  40% { transform: scale(1); }
+}
+
+.gai-cursor {
+  display: inline-block;
+  width: 6px;
+  height: 14px;
+  background-color: #333;
+  animation: gai-blink 1s step-end infinite;
+  vertical-align: middle;
+  margin-left: 2px;
+}
+
+@keyframes gai-blink {
+  50% { opacity: 0; }
+}
+
+/* 3. 底部提交按钮栏（更新逻辑） */
+.gai-submit-bar {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 12px;
+  flex-shrink: 0;
+}
+
+.btn-submit {
+  height: 40px;
+  padding: 0 24px;
+  border-radius: 20px;
+  color: #FFF;
+  border: none;
+  font-weight: bold;
+  cursor: pointer;
+  transition: 0.2s;
+}
+
+.start-btn {
+  background-color: #4A90E2;
+  box-shadow: 0 4px 12px rgba(74, 144, 226, 0.3);
+}
+
+.submit-btn {
+  background-color: #10B981;
+  box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
+}
+
+.btn-submit:disabled {
+  background: #D9D9D9;
+  box-shadow: none;
+  cursor: not-allowed;
+}
+
+.btn-submit:not(:disabled):active {
+  transform: scale(0.96);
+}
+
+/* --- 页面淡入动画 --- */
+.page-fade-enter-active {
+  animation: pageFadeIn 0.4s cubic-bezier(0.25, 0.8, 0.25, 1) forwards;
+}
+
+@keyframes pageFadeIn {
+  0% { opacity: 0; transform: translateY(15px); }
+  100% { opacity: 1; transform: translateY(0); }
+}
+
+/* 新增的局部覆盖样式用于泛光效果 */
+.gai-task-wrapper {
+  transition: all 0.3s ease;
+  border-radius: 8px;
+  border: 1px solid transparent;
+}
+
+.gai-task-wrapper.is-active {
+  border-color: rgba(64, 158, 255, 0.4);
+  box-shadow: 0 0 12px rgba(64, 158, 255, 0.25), 0 4px 12px rgba(64, 158, 255, 0.1);
+  background-color: rgba(64, 158, 255, 0.02);
+}
+
+.gai-desc-preview {
+  font-size: 12px;
+  color: #999;
+  margin-top: 4px;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.start-task-btn {
+  background: #4A90E2;
+  color: white;
+  border: none;
+  padding: 4px 10px;
+  border-radius: 4px;
+  font-size: 12px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.start-task-btn:active {
+  opacity: 0.8;
+}

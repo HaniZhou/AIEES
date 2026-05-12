@@ -1,0 +1,432 @@
+.student-study-page {
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  background-color: #F8F9FA;
+  overflow: hidden;
+}
+
+.main-body {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  padding: 0 24px 24px 24px;
+  box-sizing: border-box;
+  overflow: hidden;
+  transition: padding 0.5s cubic-bezier(0.25, 0.8, 0.25, 1);
+}
+
+.area-header {
+  height: 12%;
+  min-height: 80px;
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+  transition: all 0.5s cubic-bezier(0.25, 0.8, 0.25, 1);
+  overflow: hidden;
+}
+
+/* GAI 弹出联动：头部区域整体高度收缩至单行 */
+.area-header.is-completed {
+  height: 50px;
+  min-height: unset;
+}
+
+.back-btn-wrapper {
+  padding-right: 24px;
+  border-right: 1px solid #EBEBEB;
+  margin-right: 24px;
+  transition: all 0.5s cubic-bezier(0.25, 0.8, 0.25, 1);
+}
+
+/* GAI 弹出联动：返回按钮包裹层间距收紧 */
+.back-btn-wrapper.is-completed {
+  padding-right: 12px;
+  margin-right: 12px;
+}
+
+.back-btn {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  background-color: #FFFFFF;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.5s cubic-bezier(0.25, 0.8, 0.25, 1);
+}
+
+/* GAI 弹出联动：返回按钮尺寸缩小 */
+.back-btn.is-completed {
+  width: 28px;
+  height: 28px;
+}
+
+.back-btn:active {
+  transform: scale(0.95);
+  background-color: #F5F5F5;
+}
+
+.task-context {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  flex: 1;
+  min-width: 0;
+}
+
+.chapter-name {
+  font-size: 14px;
+  color: #666666;
+  max-height: 30px;
+  opacity: 1;
+  overflow: hidden;
+  transition: max-height 0.5s cubic-bezier(0.25, 0.8, 0.25, 1),
+              opacity 0.4s ease,
+              margin-bottom 0.5s ease;
+}
+
+/* GAI 弹出联动：章节标题缓缓折叠消失，带动下方小节标题上移 */
+.chapter-name.is-completed {
+  max-height: 0;
+  opacity: 0;
+  margin-bottom: -8px;
+}
+
+.task-title-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.status-icon {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.is-pending {
+  background-color: #F59E0B;
+}
+
+.is-done {
+  background-color: #10B981;
+}
+
+.task-name {
+  font-size: 18px;
+  font-weight: bold;
+  color: #333333;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.area-content {
+  flex: 1;
+  width: 90%;
+  margin: 0 auto;
+  background-color: #FFFFFF;
+  border-radius: 16px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.03);
+  overflow: hidden;
+  position: relative;
+  transition: all 0.5s cubic-bezier(0.25, 0.8, 0.25, 1);
+}
+
+.video-container {
+  height: 100%;
+  background-color: #000000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+
+.custom-video-player {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  accent-color: #4A90E2;
+}
+
+.pdf-container {
+  width: 100%;
+  height: 100%;
+  padding: 24px;
+  box-sizing: border-box;
+  overflow-y: auto;
+  scrollbar-width: none;
+  scroll-behavior: smooth;
+  background-color: #FFFFFF;
+}
+
+.pdf-container::-webkit-scrollbar {
+  display: none;
+}
+
+.blur-vertical {
+  -webkit-mask-image: linear-gradient(to bottom, transparent 0%, black 5%, black 95%, transparent 100%);
+  mask-image: linear-gradient(to bottom, transparent 0%, black 5%, black 95%, transparent 100%);
+}
+
+.area-feedback {
+  height: 15%;
+  min-height: 80px;
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  transition: all 0.4s cubic-bezier(0.25, 0.8, 0.25, 1);
+  overflow: hidden;
+}
+
+.feedback-inner {
+  width: 100%;
+  border-top: 1px solid #EBEBEB;
+  padding-top: 16px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+
+.feedback-prompt {
+  font-size: 14px;
+  color: #666666;
+  margin-bottom: 12px;
+  opacity: 0;
+  transform: translateY(20px);
+  transition: all 0.4s cubic-bezier(0.25, 0.8, 0.25, 1);
+}
+
+.feedback-buttons {
+  display: flex;
+  justify-content: center;
+  gap: 16px;
+  width: 100%;
+  max-width: 800px;
+  opacity: 0;
+  transform: translateY(20px);
+  transition: all 0.4s cubic-bezier(0.25, 0.8, 0.25, 1);
+}
+
+.is-visible {
+  opacity: 1 !important;
+  transform: translateY(0) !important;
+}
+
+.diff-btn {
+  height: 44px;
+  padding: 0 16px;
+  border-radius: 30px;
+  background-color: #F5F5F5;
+  color: #666666;
+  font-size: 14px;
+  border: none;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  flex: 1;
+  max-width: 120px;
+}
+
+.diff-btn.is-selected {
+  background-color: #4A90E2;
+  color: #FFFFFF;
+  font-weight: bold;
+  box-shadow: 0 4px 12px rgba(74, 144, 226, 0.3);
+}
+
+.diff-btn:disabled {
+  cursor: not-allowed;
+  opacity: 0.8;
+}
+
+.diff-btn:not(:disabled):active {
+  transform: scale(0.95);
+}
+
+.dots-loading-wrap {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  background-color: #FFFFFF;
+  border-radius: 16px;
+}
+
+.dots-loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+.dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background-color: #4A90E2;
+  animation: dot-bounce 0.6s infinite alternate;
+}
+
+.dot:nth-child(2) {
+  animation-delay: 0.08s;
+}
+
+.dot:nth-child(3) {
+  animation-delay: 0.16s;
+}
+
+.dot:nth-child(4) {
+  animation-delay: 0.24s;
+}
+
+.dot:nth-child(5) {
+  animation-delay: 0.32s;
+}
+
+@keyframes dot-bounce {
+  0% {
+    transform: translateY(0);
+    opacity: 0.45;
+  }
+  100% {
+    transform: translateY(-12px);
+    opacity: 1;
+  }
+}
+
+.dots-loading-text {
+  margin-top: 12px;
+  font-size: 13px;
+  color: #999;
+}
+
+.area-feedback.is-hiding {
+  height: 0;
+  min-height: 0;
+  padding-top: 0;
+  opacity: 0;
+  transform: translateY(100%);
+  border: none;
+}
+
+.main-body.gai-split-active {
+  padding-right: calc(min(400px, 40vw) + 24px);
+}
+
+.area-content.gai-split-active {
+  width: 100% !important;
+  margin: 0 !important;
+}
+
+.load-error-wrap {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  background-color: #FFFFFF;
+  border-radius: 16px;
+}
+
+.load-error-text {
+  font-size: 14px;
+  color: #999999;
+  text-align: center;
+  padding: 0 24px;
+}
+
+
+/* ==========================================
+   GAI 侧边栏布局覆写与对齐优化 (最终修复版)
+   ========================================== */
+
+/* 1. 提升页面层级作为定位上下文 */
+.student-study-page {
+  position: relative !important;
+}
+
+/* 2. 穿透 GAI 容器，改为绝对定位铺满底层 */
+.student-study-page ::v-deep(.agi-container) {
+  position: absolute !important;
+  top: 0; left: 0; right: 0; bottom: 0;
+  width: 100% !important;
+  height: 100% !important;
+  pointer-events: none; /* 允许鼠标穿透到底层学习区域 */
+}
+
+/* 3. 穿透覆写悬浮按钮位置 */
+.student-study-page ::v-deep(.agi-trigger) {
+  position: absolute !important;
+  right: 16px;
+  top: 50%;
+  transform: translateY(-50%) !important;
+  pointer-events: auto;
+  transition: right 0.3s cubic-bezier(0.25, 0.8, 0.25, 1) !important;
+}
+.student-study-page ::v-deep(.agi-trigger.is-open) {
+  right: calc(min(400px, 40vw) + 32px - 16px) !important;
+}
+
+/* 4. 核心修复：GAI 面板默认高度精准对齐内容区 (未完成学习时) */
+.student-study-page ::v-deep(.agi-panel) {
+  position: absolute !important;
+  right: 24px !important;
+  top: max(12%, 80px) !important;    /* 精准对齐 area-header 初始高度 */
+  bottom: 24px !important;           /* 修复：对齐主容器底部 padding，解决高度过小 */
+  height: auto !important;
+  transform: none !important;
+  pointer-events: auto;
+  transition: top 0.5s cubic-bezier(0.25, 0.8, 0.25, 1),
+              bottom 0.5s cubic-bezier(0.25, 0.8, 0.25, 1) !important;
+}
+
+/* 5. 强制内容区右侧留出 24px 视觉呼吸空间，拒绝贴合 */
+.area-content.gai-split-active {
+  width: calc(100% - 24px) !important;
+  margin-right: 24px !important;
+}
+
+/* 6. 完成评价后的联动：GAI 撑满放大 */
+.student-study-page.gai-split-active ::v-deep(.agi-panel) {
+  top: 50px !important;   /* 对应评价后 area-header 收缩的 50px */
+  bottom: 24px !important; /* 对应评价后底部仅剩的主容器 padding */
+}
+
+/* 7. 隐藏收起按钮：完成评价后隐藏悬浮球，防止学生关闭 GAI */
+.student-study-page.gai-split-active ::v-deep(.agi-trigger) {
+  display: none !important;
+}
+
+/* 8. 移动端兼容保护 */
+@media (max-width: 768px) {
+  .student-study-page.gai-split-active ::v-deep(.agi-panel) {
+    top: 0 !important;
+    bottom: 0 !important;
+    right: 0 !important;
+    width: 100vw !important;
+    height: 100dvh !important;
+    border-radius: 0 !important;
+  }
+  .area-content.gai-split-active {
+    margin-right: 0 !important;
+    width: 100% !important;
+  }
+  /* 移动端下打开时统一隐藏悬浮球 */
+  .student-study-page ::v-deep(.agi-trigger.is-open) {
+    display: none !important;
+  }
+}

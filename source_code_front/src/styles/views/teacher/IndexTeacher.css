@@ -1,0 +1,381 @@
+/* --- 页面整体架构 --- */
+.teacher-index-page {
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  background-color: #F8F9FA;
+  overflow: hidden;
+}
+
+/* 页面主体两栏布局 */
+.main-body {
+  flex: 1;
+  display: flex;
+  padding: 24px;
+  gap: 24px;
+  overflow: hidden;
+  box-sizing: border-box;
+}
+
+/* ================= 左侧内容区域 ================= */
+.left-content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  min-width: 0;
+}
+
+.section {
+  background-color: #FFFFFF;
+  border-radius: 16px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.03);
+  box-sizing: border-box;
+  display: flex;
+  overflow: hidden;
+}
+
+/* --- 板块一：个人信息卡片 (占高 30%) --- */
+.profile-section {
+  height: 30%;
+  align-items: center;
+  padding: 0 32px;
+}
+
+.avatar-area {
+  flex-shrink: 0;
+}
+
+.teacher-avatar {
+  width: 80px;
+  height: 80px;
+  border-radius: 50%;
+  border: 2px solid #FFFFFF;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.08);
+  object-fit: cover;
+}
+
+.info-area {
+  margin-left: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.teacher-name {
+  font-size: 24px;
+  font-weight: bold;
+  color: #333333;
+}
+
+.teacher-meta {
+  font-size: 15px;
+  color: #666666;
+}
+
+/* --- 板块二：课程与学生详情看板 (占高 70%) --- */
+.dashboard-section {
+  height: 70%;
+  display: flex;
+  flex-direction: row;
+}
+
+.dash-col {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+.col-title {
+  font-size: 16px;
+  font-weight: 600;
+  color: #333333;
+  padding: 20px 20px 12px 20px;
+  flex-shrink: 0;
+  text-align: center;
+  border-bottom: 1px solid #F0F0F0;
+}
+
+/* 通用垂直边缘模糊遮罩 */
+.blur-vertical {
+  -webkit-mask-image: linear-gradient(to bottom, transparent 0%, black 6%, black 94%, transparent 100%);
+  mask-image: linear-gradient(to bottom, transparent 0%, black 6%, black 94%, transparent 100%);
+}
+
+.scroll-list-container {
+  flex: 1;
+  overflow-y: auto;
+  scrollbar-width: none;
+  padding: 12px 0;
+}
+
+.scroll-list-container::-webkit-scrollbar {
+  display: none;
+}
+
+/* 子板块一：课程列表 (调整为 25%) */
+.course-col {
+  width: 25%;
+  border-right: 1px solid #F0F0F0;
+}
+
+/* --- 新增：课程迷你卡片样式 --- */
+.course-card-mini {
+  background-color: #F8F9FA;
+  border-radius: 10px;
+  margin: 0 12px 12px 12px;
+  overflow: hidden;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.03);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  border: 2px solid transparent;
+}
+
+.course-card-mini:active {
+  transform: scale(0.97);
+}
+
+.course-card-mini:hover {
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.06);
+}
+
+.course-card-mini.is-active {
+  border-color: #4A90E2;
+  background-color: #F0F6FF;
+  box-shadow: 0 4px 12px rgba(74, 144, 226, 0.15);
+}
+
+.course-card-mini img {
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  object-fit: cover;
+  display: block;
+  background-color: #E0E0E0;
+}
+
+.course-card-mini .card-name {
+  padding: 10px 8px;
+  font-size: 13px;
+  color: #333333;
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* 子板块二：学生列表 (调整为 15%) */
+.student-col {
+  width: 15%;
+  border-right: 1px solid #F0F0F0;
+}
+
+/* 列表项触控与选中规范（仅供学生列表使用） */
+.list-item {
+  min-height: 48px;
+  display: flex;
+  align-items: center;
+  padding: 0 16px;
+  font-size: 14px;
+  color: #666666;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  position: relative;
+  user-select: none;
+}
+
+.list-item:hover {
+  background-color: #F8F9FA;
+}
+
+.list-item.is-active {
+  color: #4A90E2;
+  font-weight: bold;
+  background-color: #F0F6FF;
+}
+
+/* 选中左侧蓝色指示条 */
+.list-item.is-active::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 12px;
+  bottom: 12px;
+  width: 4px;
+  background-color: #4A90E2;
+  border-radius: 0 4px 4px 0;
+}
+
+/* 子板块三：详情展示区 (60%) */
+.detail-col {
+  width: 60%;
+  padding: 24px;
+  background-color: #FAFAFB;
+}
+
+/* ================= 空状态布局补充 ================= */
+.empty-state-container {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.detail-empty-tip {
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.chart-empty {
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: #FFFFFF;
+  border-radius: 12px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.02);
+}
+
+.text-empty {
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: #FFFFFF;
+  border-radius: 12px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.02);
+}
+
+/* ================= 原有详情样式 ================= */
+.chart-area {
+  height: 45%;
+  position: relative;
+  background-color: #FFFFFF;
+  border-radius: 12px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.02);
+  margin-bottom: 16px;
+  padding: 16px;
+}
+
+.echarts-container {
+  width: 100%;
+  height: 100%;
+}
+
+.today-study-badge {
+  position: absolute;
+  top: 16px;
+  right: 16px;
+  font-size: 13px;
+  color: #666666;
+  background-color: #F5F7FA;
+  padding: 6px 12px;
+  border-radius: 20px;
+}
+
+.today-study-badge .highlight {
+  color: #4A90E2;
+  font-weight: bold;
+  font-size: 16px;
+}
+
+.analysis-area {
+  height: 55%;
+  display: flex;
+  flex-direction: column;
+}
+
+.analysis-title {
+  font-size: 16px;
+  font-weight: 600;
+  color: #333333;
+  margin-bottom: 12px;
+}
+
+.analysis-content-scroll {
+  flex: 1;
+  background-color: #FFFFFF;
+  border-radius: 12px;
+  padding: 16px 20px;
+  overflow-y: auto;
+  scrollbar-width: none;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.02);
+}
+
+.analysis-content-scroll::-webkit-scrollbar {
+  display: none;
+}
+
+.analysis-text {
+  font-size: 14px;
+  line-height: 1.8;
+  color: #333333;
+  margin: 0;
+}
+
+.skeleton-padding {
+  padding: 20px;
+}
+
+.detail-skeleton {
+  padding: 16px;
+}
+
+/* ================= 右侧：全局 GAI 助手深度覆盖 ================= */
+.right-agi-wrapper {
+  width: min(400px, 40vw);
+  height: 100%;
+  align-self: center;
+  border-radius: 16px;
+  overflow: hidden;
+  position: relative;
+}
+
+.right-agi-wrapper :deep(.agi-container) {
+  position: static;
+  width: 100%;
+  height: 100%;
+}
+
+.right-agi-wrapper :deep(.agi-trigger) {
+  display: none !important;
+}
+
+.right-agi-wrapper :deep(.agi-panel) {
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  transform: none;
+  width: 100% !important;
+  height: 100% !important;
+}
+
+.right-agi-wrapper :deep(.slide-enter-active),
+.right-agi-wrapper :deep(.slide-leave-active) {
+  transition: none !important;
+  transform: none !important;
+}
+
+@keyframes blink {
+  0%, 50% { opacity: 1; }
+  50.1%, 100% { opacity: 0; }
+}
+
+/* Markdown 基础样式 */
+.markdown-body {
+  font-size: 14px;
+  line-height: 1.8;
+  color: #333333;
+}
+
+.markdown-body strong {
+  font-weight: 600;
+  color: #222;
+}
+
+.markdown-body .katex {
+  font-size: 1.1em;
+}

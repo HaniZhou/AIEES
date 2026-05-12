@@ -1,0 +1,488 @@
+/* --- 页面整体架构 --- */
+.task-detail-page {
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  background-color: #F8F9FA;
+  overflow: hidden;
+  padding-top: env(safe-area-inset-top, 20px);
+  box-sizing: border-box;
+}
+
+.main-body {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+/* ================= 顶部固定信息栏 ================= */
+.top-info-bar {
+  height: 70px;
+  flex-shrink: 0;
+  background-color: #FFFFFF;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 24px;
+  z-index: 10;
+}
+
+.info-left {
+  display: flex;
+  align-items: center;
+}
+
+.back-btn {
+  width: 44px;
+  height: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  margin-right: 8px;
+  border-radius: 50%;
+  transition: background-color 0.2s;
+}
+
+.back-btn:active {
+  background-color: #F5F5F5;
+}
+
+.test-name {
+  font-size: 18px;
+  font-weight: 600;
+  color: #333333;
+}
+
+.test-count {
+  font-size: 14px;
+  color: #666666;
+  margin-left: 8px;
+}
+
+.info-right {
+  display: flex;
+  align-items: center;
+}
+
+.test-deadline {
+  font-size: 14px;
+  color: #666666;
+}
+
+.test-deadline.is-urgent {
+  color: #FA6464;
+  font-weight: bold;
+}
+
+/* ================= 中间题目区 ================= */
+.middle-scroll-area {
+  flex: 1;
+  background-color: #F5F5F5;
+  padding: 24px;
+  overflow-y: auto;
+  scrollbar-width: none;
+  scroll-behavior: smooth;
+  box-sizing: border-box;
+}
+
+.middle-scroll-area::-webkit-scrollbar {
+  display: none;
+}
+
+.blur-vertical {
+  -webkit-mask-image: linear-gradient(to bottom, transparent 0%, black 5%, black 95%, transparent 100%);
+  mask-image: linear-gradient(to bottom, transparent 0%, black 5%, black 95%, transparent 100%);
+}
+
+.question-list {
+  max-width: 900px;
+  margin: 0 auto;
+  padding: 24px 0;
+}
+
+/* --- 题目卡片 --- */
+.question-card {
+  background-color: #FFFFFF;
+  border-radius: 16px;
+  padding: 24px;
+  margin-bottom: 16px;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.03);
+}
+
+.card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+}
+
+.q-num {
+  font-size: 16px;
+  font-weight: bold;
+  color: #4A90E2;
+}
+
+.q-type-tag {
+  background-color: #EBF3FC;
+  color: #4A90E2;
+  font-size: 12px;
+  padding: 4px 10px;
+  border-radius: 6px;
+  font-weight: 500;
+}
+
+.q-title {
+  font-size: 16px;
+  line-height: 1.6;
+  color: #333333;
+  margin-bottom: 20px;
+  word-wrap: break-word;
+}
+
+.options-container {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.option-row {
+  display: flex;
+  align-items: center;
+  min-height: 44px;
+  padding: 8px 12px;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background-color 0.2s, border-color 0.2s, box-shadow 0.2s;
+  border: 1px solid transparent;
+}
+
+.option-row:hover {
+  background-color: #F8F9FA;
+}
+
+.option-row:active {
+  background-color: #F0F6FF;
+}
+
+.option-text {
+  font-size: 15px;
+  color: #333333;
+  margin-left: 12px;
+  line-height: 1.5;
+}
+
+.radio-circle {
+  width: 20px;
+  height: 20px;
+  border: 1px solid #D9D9D9;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  transition: all 0.2s;
+}
+
+.radio-circle.is-active {
+  border-color: #4A90E2;
+}
+
+.radio-dot {
+  width: 10px;
+  height: 10px;
+  background-color: #4A90E2;
+  border-radius: 50%;
+}
+
+.checkbox-square {
+  width: 20px;
+  height: 20px;
+  border: 1px solid #D9D9D9;
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  transition: all 0.2s;
+}
+
+.checkbox-square.is-active {
+  background-color: #4A90E2;
+  border-color: #4A90E2;
+}
+
+.judge-container {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.judge-btn {
+  flex: 1;
+  height: 48px;
+  border-radius: 24px;
+  background-color: #F5F5F5;
+  color: #666666;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 16px;
+  cursor: pointer;
+  transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+  user-select: none;
+  border: 1px solid transparent;
+}
+
+.judge-btn:active {
+  transform: scale(0.97);
+}
+
+.judge-btn.is-active {
+  background-color: #4A90E2;
+  color: #FFFFFF;
+  font-weight: bold;
+  box-shadow: 0 4px 12px rgba(74, 144, 226, 0.3);
+}
+
+.subjective-container {
+  width: 100%;
+}
+
+.subjective-input {
+  width: 100%;
+  min-height: 120px;
+  background-color: #F8F9FA;
+  border-radius: 12px;
+  padding: 16px;
+  border: 1px solid transparent;
+  resize: none;
+  font-size: 15px;
+  color: #333333;
+  line-height: 1.6;
+  box-sizing: border-box;
+  font-family: inherit;
+  transition: border-color 0.3s;
+}
+
+.subjective-input:focus {
+  outline: none;
+  border-color: #4A90E2;
+  background-color: #FFFFFF;
+  box-shadow: 0 0 0 2px rgba(74, 144, 226, 0.1);
+}
+
+.subjective-input::placeholder {
+  color: #999999;
+}
+
+/* ================= 底部固定操作栏 ================= */
+.bottom-action-bar {
+  height: 70px;
+  flex-shrink: 0;
+  background-color: #FFFFFF;
+  box-shadow: 0 -2px 8px rgba(0, 0, 0, 0.04);
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  padding: 0 24px;
+  z-index: 10;
+}
+
+.warning-text {
+  font-size: 14px;
+  color: #FA6464;
+  margin-right: 16px;
+}
+
+.submit-btn {
+  min-width: 140px;
+  height: 48px;
+  border-radius: 30px;
+  border: none;
+  font-size: 16px;
+  font-weight: bold;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.3s;
+}
+
+.submit-btn.is-disabled {
+  background-color: #E0E0E0;
+  color: #999999;
+  cursor: not-allowed;
+}
+
+.submit-btn.is-active {
+  background-color: #4A90E2;
+  color: #FFFFFF;
+  cursor: pointer;
+  box-shadow: 0 4px 12px rgba(74, 144, 226, 0.3);
+}
+
+.submit-btn.is-active:active {
+  transform: scale(0.96);
+}
+
+/* ================= 状态隔离与批改回顾 ================= */
+/* 1. 核心状态切换：禁用态视觉隔离 (保留点击穿透禁用，移除灰色背景) */
+.is-disabled-view .question-card {
+  pointer-events: none;
+}
+
+.is-disabled-view .question-card .subjective-input {
+  border-color: transparent;
+  box-shadow: none;
+  color: #666666;
+}
+
+/* 2. 批改回顾：总结卡片 */
+.review-summary-card {
+  background-color: #FFFFFF;
+  border-radius: 16px;
+  padding: 24px;
+  margin-bottom: 16px;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.03);
+  border-left: 6px solid #4A90E2;
+}
+
+.summary-header {
+  font-size: 18px;
+  font-weight: bold;
+  color: #333333;
+  margin-bottom: 16px;
+}
+
+.summary-score {
+  font-size: 28px;
+  font-weight: bold;
+  color: #4A90E2;
+  margin-bottom: 20px;
+}
+
+.analysis-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: #666666;
+  margin-bottom: 8px;
+}
+
+.analysis-text {
+  font-size: 14px;
+  line-height: 1.8;
+  color: #333333;
+}
+
+.analysis-text strong {
+  font-weight: 600;
+  color: #222;
+}
+
+.analysis-text .katex {
+  font-size: 1.1em;
+}
+
+/* 3. 批改回顾：选项三态高亮 (绿：做对，红：做错，黄：漏选/正确答案) */
+/* 学生作答正确高亮 (绿) - 优先级最高 */
+.option-row.is-correct, .judge-btn.is-correct {
+  background-color: #F0FFF4;
+  border-color: #67C23A;
+}
+
+.option-row.is-correct .radio-circle, .option-row.is-correct .checkbox-square {
+  border-color: #67C23A;
+  background-color: #67C23A;
+  color: #FFFFFF;
+}
+
+.option-row.is-correct .option-text {
+  color: #67C23A;
+}
+
+.judge-btn.is-correct {
+  color: #67C23A;
+  font-weight: bold;
+}
+
+/* 学生作答错误高亮 (红) */
+.option-row.is-wrong, .judge-btn.is-wrong {
+  background-color: #FEF0F0;
+  border-color: #F56C6C;
+}
+
+.option-row.is-wrong .radio-circle, .option-row.is-wrong .checkbox-square {
+  border-color: #F56C6C;
+  background-color: #F56C6C;
+  color: #FFFFFF;
+}
+
+.option-row.is-wrong .option-text {
+  color: #F56C6C;
+}
+
+.judge-btn.is-wrong {
+  color: #F56C6C;
+  font-weight: bold;
+}
+
+/* 教师正确答案/漏选高亮 (黄) - 仅当学生未选对时生效 */
+.option-row.is-missed, .judge-btn.is-missed {
+  background-color: #FDF6EC;
+  border-color: #E6A23C;
+}
+
+.option-row.is-missed .radio-circle, .option-row.is-missed .checkbox-square {
+  border-color: #E6A23C;
+  background-color: #E6A23C;
+  color: #FFFFFF;
+}
+
+.option-row.is-missed .option-text {
+  color: #E6A23C;
+}
+
+.judge-btn.is-missed {
+  color: #E6A23C;
+  font-weight: bold;
+}
+
+/* 4. 底部状态文字提示 */
+.status-text {
+  font-size: 16px;
+  font-weight: bold;
+  margin-right: 16px;
+}
+
+.status-text.is-submitted {
+  color: #67C23A;
+}
+
+.status-text.is-expired {
+  color: #909399;
+}
+
+/* ================= 主观题参考答案展示区 ================= */
+.refer-answer-box {
+  margin-top: 16px;
+  padding: 16px;
+  background-color: #F0F6FF;
+  border-radius: 8px;
+  border-left: 4px solid #4A90E2;
+}
+
+.refer-answer-title {
+  font-size: 14px;
+  font-weight: bold;
+  color: #4A90E2;
+  margin-bottom: 8px;
+}
+
+.refer-answer-text {
+  font-size: 14px;
+  color: #333333;
+  line-height: 1.6;
+  white-space: pre-wrap;
+}

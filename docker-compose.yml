@@ -1,0 +1,131 @@
+# version 已废弃，Docker Compose V2 会忽略它，删掉避免警告
+
+# 定义持久化数据卷
+volumes:
+  postgres_data:
+  redis_data:
+
+services:
+  # ==============================
+  # 1. 数据库服务 (Postgres)
+  # ==============================
+  db:
+    image: postgres:18.3
+    container_name: psql
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: postgres
+    volumes:
+      - postgres_data:/var/lib/postgresql
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - network1
+
+  # ==============================
+  # 2. 缓存/任务队列服务 (Redis)
+  # ==============================
+  redis:
+    image: redis:8.4.2-alpine
+    container_name: redis_server
+    command: redis-server --appendonly yes --requirepass redis123 --maxmemory 500mb --maxmemory-policy allkeys-lru
+    volumes:
+      - redis_data:/data
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "redis-cli", "-a", "redis123", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - network1
+
+  # ==============================
+  # 3. Web API 服务
+  # ==============================
+  api:
+    build: .
+    container_name: fastapi
+    expose:
+      - "8000"
+    environment:
+      - DATABASE_URL=postgresql+asyncpg://postgres:postgres@db:5432/postgres
+      - REDIS_URL=redis://:redis123@redis:6379/0
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - DB_HOST=db
+      - DB_PORT=5432
+      - DB_NAME=postgres
+      - DB_USER=postgres
+      - DB_PASSWORD=postgres
+      - REDIS_PASSWORD=redis123
+    volumes:
+      - ./static/uploads:/app/static/uploads
+      - ./logs:/app/logs
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+    networks:
+      - network1
+
+  # ==============================
+  # 4. ARQ Worker 服务
+  # ==============================
+  worker:
+    build: .
+    container_name: arq_worker
+    command: ["arq", "app.core.arq_jobs.WorkerSettings"]
+    environment:
+      - DATABASE_URL=postgresql+asyncpg://postgres:postgres@db:5432/postgres
+      - REDIS_URL=redis://:redis123@redis:6379/0
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - DB_HOST=db
+      - DB_PORT=5432
+      - DB_NAME=postgres
+      - DB_USER=postgres
+      - DB_PASSWORD=postgres
+      - REDIS_PASSWORD=redis123
+    volumes:
+      - ./logs:/app/logs
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+    networks:
+      - network1
+
+  # ==============================
+  # 5. Nginx 代理与静态文件服务
+  # ==============================
+  nginx:
+    image: nginx:mainline-alpine3.23
+    container_name: nginx
+    ports:
+      - "80:80"
+    volumes:
+      - ./frontend/dist:/var/www/frontend:ro
+      - ./static/uploads:/var/www/static/uploads:ro
+      - ./nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./logs/nginx:/var/log/nginx
+      - /dev/null:/etc/nginx/conf.d/default.conf
+    depends_on:
+      - api
+    restart: unless-stopped
+    networks:
+      - network1
+
+
+networks:
+  network1:
+    driver: bridge

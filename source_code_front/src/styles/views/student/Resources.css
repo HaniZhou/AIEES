@@ -1,0 +1,318 @@
+/* --- 页面整体架构 --- */
+.resources-page {
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+    background-color: #F8F9FA;
+    overflow: hidden;
+}
+
+/* 页面主体左右两栏布局 */
+.main-body {
+    flex: 1;
+    display: flex;
+    overflow: hidden;
+    box-sizing: border-box;
+}
+
+/* --- 左侧“我的课程” (占 25%) --- */
+.left-sidebar {
+    width: 25%;
+    background-color: #FFFFFF;
+    border-right: 1px solid #EBEBEB; /* 区分右侧内容区 */
+    padding: 16px;
+    border-radius: 10px;
+    overflow-y: auto;
+    scrollbar-width: none;
+}
+
+.left-sidebar::-webkit-scrollbar {
+    display: none;
+}
+
+.category-list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 8px; /* 列表项之间的间距 */
+}
+
+/* 默认未选中状态 */
+.category-item {
+    position: relative;
+    min-height: 48px; /* 触控热区 > 44px */
+    padding: 12px 16px;
+    font-size: 16px;
+    color: #666666;
+    font-weight: normal;
+    border-radius: 8px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    /* 平滑过渡动画控制字体大小、颜色、内边距等复合变化 */
+    transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+    user-select: none;
+}
+
+.category-item:hover {
+    background-color: #F8F9FA;
+}
+
+/* 选中态：高亮放大交互反馈 */
+.category-item.active {
+    color: #4A90E2;
+    font-weight: bold;
+    font-size: 20px; /* 字体放大 */
+    padding: 16px 20px; /* 内边距按比例扩大，占据更大视觉空间 */
+    background-color: #F0F6FF;
+}
+
+/* 垂直蓝色指示条 */
+.category-item.active::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 4px;
+    height: 24px;
+    background-color: #4A90E2;
+    border-radius: 0 4px 4px 0;
+}
+
+/* "我的课程" 特殊入口强制加粗 (覆盖原有粗细) */
+.category-item:first-child {
+    font-weight: 600;
+    margin-bottom: 8px;
+}
+
+.category-item.active:first-child {
+    font-weight: bold;
+}
+
+
+/* --- 右侧课程内容区 (占 75%) --- */
+.right-content {
+    width: 75%;
+    background-color: #F8F9FA;
+    position: relative;
+    padding: 0 24px; /* 水平内边距 24px */
+}
+
+/* 垂直边缘中心发散模糊遮罩 (上下两端渐隐) */
+.blur-vertical {
+    -webkit-mask-image: linear-gradient(to bottom, transparent 0%, black 3%, black 97%, transparent 100%);
+    mask-image: linear-gradient(to bottom, transparent 0%, black 3%, black 97%, transparent 100%);
+}
+
+.scroll-container {
+    height: 100%;
+    overflow-y: auto;
+    padding: 24px 0; /* 垂直内边距 24px，为了不被 mask 截断，放在滚动容器内部 */
+    scrollbar-width: none;
+    scroll-behavior: smooth;
+}
+
+.scroll-container::-webkit-scrollbar {
+    display: none;
+}
+
+/* --- 课程网格布局 --- */
+.course-grid, .skeleton-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr); /* 强制每行 4 个卡片 */
+    gap: 16px; /* 卡片间距 16px */
+}
+
+/* 骨架屏占位 */
+.skeleton-card {
+    background-color: #FFFFFF;
+    border-radius: 12px;
+    padding: 16px;
+    height: 220px;
+}
+
+/* --- 课程卡片设计 --- */
+.course-card {
+    background-color: #FFFFFF;
+    border-radius: 12px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.04);
+    cursor: pointer;
+    overflow: hidden;
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+    display: flex;
+    flex-direction: column;
+}
+
+.course-card:active {
+    transform: scale(0.97);
+}
+
+.course-card:hover {
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.08);
+    transform: translateY(-2px);
+}
+
+/* 封面图片 */
+.course-cover {
+    width: 100%;
+    aspect-ratio: 4 / 3;
+    object-fit: cover;
+    border-radius: 12px 12px 0 0;
+    display: block;
+}
+
+.course-info {
+    padding: 12px;
+    display: flex;
+    flex-direction: column;
+    flex-grow: 1;
+}
+
+.course-title {
+    font-size: 16px;
+    font-weight: bold;
+    color: #333333;
+    margin-bottom: 8px;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+}
+
+.course-teacher {
+    font-size: 14px;
+    color: #666666;
+    margin-top: auto;
+}
+
+/* --- 底部状态提示 --- */
+.loading-more-area, .no-more-area {
+    display: flex;
+    justify-content: center;
+    padding: 24px 0;
+    color: #999999;
+    font-size: 13px;
+}
+
+/* --- 加入班级卡片 --- */
+.create-card {
+    background-color: #FFFFFF;
+    border-radius: 12px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.04);
+    cursor: pointer;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-height: 200px;
+    border: 2px dashed #4A90E2;
+    transition: all 0.2s ease;
+}
+
+.create-card:hover {
+    background-color: #F0F6FF;
+    transform: translateY(-2px);
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.08);
+}
+
+.create-icon-wrapper {
+    margin-bottom: 12px;
+}
+
+.plus-icon {
+    color: #4A90E2;
+}
+
+.create-text {
+    font-size: 14px;
+    color: #4A90E2;
+    font-weight: 500;
+}
+
+/* --- 加入班级弹窗 --- */
+.join-modal-popup {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.join-modal-content {
+    background-color: #FFFFFF;
+    border-radius: 12px;
+    padding: 24px;
+    width: 400px;
+    max-width: 90vw;
+}
+
+.join-modal-title {
+    font-size: 20px;
+    font-weight: bold;
+    color: #333333;
+    margin-bottom: 20px;
+    text-align: center;
+}
+
+.join-input-wrapper {
+    margin-bottom: 24px;
+}
+
+.join-input {
+    width: 100%;
+    padding: 12px 16px;
+    font-size: 16px;
+    border: 1px solid #E0E0E0;
+    border-radius: 8px;
+    outline: none;
+    box-sizing: border-box;
+    transition: border-color 0.2s ease;
+    letter-spacing: 4px;
+    text-align: center;
+    font-weight: bold;
+}
+
+.join-input:focus {
+    border-color: #4A90E2;
+}
+
+.join-modal-buttons {
+    display: flex;
+    justify-content: space-between;
+    gap: 16px;
+}
+
+.join-btn {
+    flex: 1;
+    padding: 12px 24px;
+    font-size: 14px;
+    border-radius: 8px;
+    border: none;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.join-btn.btn-cancel {
+    background-color: #F0F0F0;
+    color: #666666;
+}
+
+.join-btn.btn-cancel:hover {
+    background-color: #E0E0E0;
+}
+
+.join-btn.btn-submit {
+    background-color: #4A90E2;
+    color: #FFFFFF;
+}
+
+.join-btn.btn-submit:hover {
+    background-color: #3A7BD1;
+}
+
+.join-btn.btn-submit:disabled {
+    background-color: #B0C4DE;
+    cursor: not-allowed;
+}
