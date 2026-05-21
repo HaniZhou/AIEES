@@ -27,20 +27,22 @@ class CORSConfig:
 
 class SecretConfig:
     # JTW 加密
-    SECRET_KEY = os.getenv("SECRET_KEY", "Default_value")
+    SECRET_KEY = os.getenv("SECRET_KEY",None)
     ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 1440
 
     # Redis配置
-    REDIS_PASSWORD: str = os.getenv("REDIS_PASSWORD", "Default_value")
+    REDIS_PASSWORD: str = os.getenv("REDIS_PASSWORD", None)
 
     # 数据库配置
-    DB_USER: str = os.getenv("DB_USER", "Default_value")
-    DB_PASSWORD: str = os.getenv("DB_PASSWORD", "Default_value")
+    DB_USER: str = os.getenv("DB_USER", None)
+    DB_PASSWORD: str = os.getenv("DB_PASSWORD", None)
+    ADMIN_PASSWORD: str = os.getenv("ADMIN_PASSWORD", None)
+    ADMIN_NAME: str = os.getenv("ADMIN_NAME", None)
 
     # AI 配置
-    AI_BASE_URL = os.getenv("BASE_API", "")
-    API_KAY = os.getenv("API_KEY", "")
+    AI_BASE_URL = os.getenv("BASE_URL", None)
+    API_KAY = os.getenv("API_KEY", None)
 
 
 class UrlConfig:
@@ -56,13 +58,13 @@ class UrlConfig:
     LOGS_DIR: Path = Path("/app/logs")
 
     # Redis 配置
-    REDIS_HOST: str = os.getenv("REDIS_HOST", "Default_value")
-    REDIS_PORT: int = int(os.getenv("REDIS_PORT", "Default_value"))
+    REDIS_HOST: str = os.getenv("REDIS_HOST", None)
+    REDIS_PORT: int = int(os.getenv("REDIS_PORT", None))
 
     # 数据库配置
-    DB_HOST: str = os.getenv("DB_HOST", "Default_value")
-    DB_PORT: int = int(os.getenv("DB_PORT", "Default_value"))
-    DB_NAME: str = os.getenv("DB_NAME", "Default_value")
+    DB_HOST: str = os.getenv("DB_HOST", None)
+    DB_PORT: int = int(os.getenv("DB_PORT", None))
+    DB_NAME: str = os.getenv("DB_NAME", None)
 
     @classmethod
     def init_directories(cls):

@@ -23,7 +23,7 @@
             </div>
             <div class="switch-tab-row" :class="{ active: activeLeftTab === 'gai-task' }"
                  @click="activeLeftTab = 'gai-task'">
-              <span>GAI任务</span>
+              <span>人机交互任务</span>
               <div class="active-indicator" v-if="activeLeftTab === 'gai-task'"></div>
             </div>
             <div v-if="!isEditMode" class="switch-tab-row" :class="{ active: activeLeftTab === 'analysis' }"
@@ -114,7 +114,7 @@
               <van-icon name="plus" size="24" color="#4A90E2"/>
             </div>
           </div>
-          <!-- 视图三：GAI任务 -->
+          <!-- 视图三：人机交互任务 -->
           <div v-if="activeLeftTab === 'gai-task'" class="task-view">
             <div v-for="(gt, index) in gaiTaskList" :key="gt.analysis_task_id" class="task-card"
                  @click="handleGaiTaskClick(gt)">
@@ -159,14 +159,14 @@
                       <div class="circle-inner"><span class="circle-text-sm">{{ analysisData.chapterDone }}%</span>
                       </div>
                     </van-circle>
-                    <span class="analysis-chart-label">章节完成</span>
+                    <span class="analysis-chart-label">章节</span>
                   </div>
                   <div class="analysis-chart-box">
                     <van-circle v-model:current-rate="currentAnalysisTaskRate" :rate="analysisRates.taskRate"
                                 :speed="100" color="#10B981" size="80px" :stroke-width="10">
                       <div class="circle-inner"><span class="circle-text-sm">{{ analysisData.taskDone }}%</span></div>
                     </van-circle>
-                    <span class="analysis-chart-label">任务完成</span>
+                    <span class="analysis-chart-label">任务</span>
                     <span class="analysis-chart-score">完成质量：{{ analysisData.taskQuality }}</span>
                   </div>
                   <div class="analysis-chart-box">
@@ -174,7 +174,7 @@
                                 color="#8B5CF6" size="80px" :stroke-width="10">
                       <div class="circle-inner"><span class="circle-text-sm">{{ analysisData.gaiDone }}%</span></div>
                     </van-circle>
-                    <span class="analysis-chart-label">GAI任务完成</span>
+                    <span class="analysis-chart-label">人机交互任务</span>
                   </div>
                 </div>
                 <div class="analysis-text-area blur-vertical">
@@ -259,7 +259,7 @@
           </div>
         </div>
       </transition>
-      <!-- 2. GAI任务预览 -->
+      <!-- 2. 人机交互任务预览 -->
       <transition name="fade">
         <div v-if="showGaiTaskDetailPanel && !isEditMode" class="modal-overlay glass-overlay"
              @click.self="showGaiTaskDetailPanel = false">
@@ -296,12 +296,12 @@
           </div>
         </div>
       </transition>
-      <!-- 3. GAI任务编辑弹窗 -->
+      <!-- 3. 人机交互任务编辑弹窗 -->
       <transition name="modal-fade">
         <div v-if="showGaiTaskModal" class="modal-overlay" @click.self="closeGaiTaskModal">
           <div class="subtask-modal-content gai-form-content">
-            <h3>{{ currentGaiTask ? '编辑GAI任务' : '发布GAI任务' }}</h3>
-            <input type="text" class="custom-input" v-model="gaiTaskForm.title" placeholder="请输入GAI任务标题"/>
+            <h3>{{ currentGaiTask ? '编辑人机交互任务' : '发布人机交互任务' }}</h3>
+            <input type="text" class="custom-input" v-model="gaiTaskForm.title" placeholder="请输入“人机交互任务”标题"/>
             <textarea class="custom-textarea" v-model="gaiTaskForm.desc"
                       placeholder="任务描述（课程学生可见，指导学生如何与AI交互）"></textarea>
             <textarea class="custom-textarea" v-model="gaiTaskForm.analysisReq"
@@ -495,7 +495,7 @@
         </div>
       </transition>
     </teleport>
-    <AGI ref="agiRef" :hideTrigger="showDetailPanel" roleSuffix="teacher"/>
+    <GAI ref="agiRef" :hideTrigger="showDetailPanel" roleSuffix="teacher"/>
   </div>
 </template>
 
@@ -504,7 +504,7 @@ import {onMounted, onUnmounted, reactive, ref} from 'vue'
 import {useRoute, useRouter} from 'vue-router'
 import {showConfirmDialog, showToast} from 'vant'
 import AppHeader from '@/components/AppHeader.vue'
-import AGI from '@/components/GAI.vue'
+import GAI from '@/components/GAI.vue'
 import MarkdownIt from 'markdown-it'
 import texmath from 'markdown-it-texmath'
 import katex from 'katex'
@@ -1046,7 +1046,7 @@ const deleteTask = (idx, type) => {
     } else if (type === 'gai-task') {
       await delete_gai_task(courseInfo.id, gaiTaskList.value[idx].analysis_task_id)
       gaiTaskList.value.splice(idx, 1)
-      showToast({message: 'GAI任务已删除', type: 'success'})
+      showToast({message: '人机交互任务已删除', type: 'success'})
     }
   }).catch(() => {
   })
@@ -1079,7 +1079,7 @@ const openGaiTaskModal = (task) => {
 
 const saveGaiTask = async () => {
   if (!gaiTaskForm.deadline) return showToast({message: '请设置截止时间', type: 'fail'})
-  if (!gaiTaskForm.title.trim()) return showToast({message: '请输入GAI任务标题', type: 'fail'})
+  if (!gaiTaskForm.title.trim()) return showToast({message: '请输入人机交互任务标题', type: 'fail'})
   if (!gaiTaskForm.desc.trim()) return showToast({message: '请输入任务描述', type: 'fail'})
   if (!gaiTaskForm.analysisReq.trim()) return showToast({message: '请输入对话分析需求', type: 'fail'})
   if (!gaiTaskForm.scoreRule.trim()) return showToast({message: '请输入评分标准', type: 'fail'})
@@ -1222,8 +1222,8 @@ const isGaiStreaming = ref(false)
 const isGaiDetailLoading = ref(false)
 
 /**
- * 处理GAI任务点击事件，在非编辑模式下打开预览面板，在编辑模式下打开编辑弹窗
- * @param {Object} gt - GAI任务对象
+ * 处理人机交互任务点击事件，在非编辑模式下打开预览面板，在编辑模式下打开编辑弹窗
+ * @param {Object} gt - 人机交互任务对象
  * @returns {Promise<void>}
  */
 const handleGaiTaskClick = async (gt) => {
@@ -1244,7 +1244,7 @@ const handleGaiTaskClick = async (gt) => {
 }
 
 /**
- * 选择GAI任务下的特定学生并加载分析数据
+ * 选择人机交互任务下的特定学生并加载分析数据
  * @param {string} id - 学生ID
  * @returns {Promise<void>}
  */
@@ -1348,7 +1348,7 @@ const clearTaskTime = () => {
 }
 
 /**
- * 确认选择GAI任务截止时间
+ * 确认选择人机交互任务截止时间
  */
 const confirmGaiTime = () => {
   gaiTaskForm.deadline = formatArrToString(gaiTimePickerValue.value)
@@ -1356,7 +1356,7 @@ const confirmGaiTime = () => {
 }
 
 /**
- * 清除GAI任务截止时间
+ * 清除人机交互任务截止时间
  */
 const clearGaiTime = () => {
   gaiTaskForm.deadline = null
@@ -1373,7 +1373,7 @@ const closeTaskModal = () => {
 }
 
 /**
- * 关闭GAI任务编辑弹窗并重置内部时间选择器状态，防止状态残留
+ * 关闭人机交互任务编辑弹窗并重置内部时间选择器状态，防止状态残留
  */
 const closeGaiTaskModal = () => {
   showGaiTimePicker.value = false

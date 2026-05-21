@@ -264,7 +264,6 @@ const submitPwdChange = async () => {
     const res = await updatePassword({
       old_password: pwdForm.oldPwd,
       new_password: pwdForm.newPwd,
-      confirm_password: pwdForm.confirmPwd // 修复缺失字段，避免后端校验报 Field required
     })
 
     // 3. 严格根据后端契约，只有业务 code 为 200 时才算成功修改

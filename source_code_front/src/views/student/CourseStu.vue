@@ -23,7 +23,7 @@
             </div>
             <div class="switch-tab-row" :class="{ active: activeLeftTab === 'gai-task' }"
                  @click="switchTab('gai-task')">
-              <span>GAI任务</span>
+              <span>人机交互任务</span>
               <div class="active-indicator" v-if="activeLeftTab === 'gai-task'"></div>
             </div>
           </div>
@@ -74,11 +74,11 @@
               </div>
             </div>
           </div>
-          <!-- 视图三：GAI 探究任务 -->
+          <!-- 视图三：人机交互任务 -->
           <div v-if="activeLeftTab === 'gai-task'" class="task-view">
             <div v-for="gt in gaiTaskList" :key="gt.id" class="gai-task-wrapper"
                  :class="{ 'is-active': currentActiveTaskId === gt.id }">
-              <!-- 列表卡片 (移除原内嵌按钮，改为控制手风琴) -->
+              <!-- 列表卡片  -->
               <div class="task-card" @click="handleToggleGaiPanel(gt)">
                 <div class="task-col-left">
                   <van-icon name="chat-o" class="task-type-icon"/>
@@ -99,7 +99,7 @@
                 <div class="gai-detail-inner">
                   <!-- 描述文本栏 -->
                   <div class="gai-desc-bar" v-html="renderMd(gt.description)"></div>
-                  <!-- 底部操作按钮栏：已完成状态下完全移除DOM，避免空白间距 -->
+                  <!-- 底部操作按钮栏 -->
                   <div class="gai-submit-bar" v-if="!gt.isCompleted">
                     <!-- 状态1：有其他任务正在进行中，当前任务按钮禁用 -->
                     <button v-if="currentActiveTaskId && currentActiveTaskId !== gt.id" class="btn-submit" disabled>

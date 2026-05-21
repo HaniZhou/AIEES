@@ -13,11 +13,9 @@
 - [技术栈](#技术栈)
 - [环境要求](#环境要求)
 - [快速开始（Docker Compose 一键部署）](#快速开始docker-compose-一键部署)
-- [手动部署（不依赖 Docker）](#手动部署不依赖-docker)
-  - [1. 后端启动](#1-后端启动)
-  - [2. 前端构建与部署](#2-前端构建与部署)
-  - [3. Nginx 配置](#3-nginx-配置)
-- [前端重新打包（Vue 构建指南）](#前端重新打包vue-构建指南)
+- [开发更新指南](#开发更新指南)
+  - [更新后端代码（Python）](#更新后端代码python)
+  - [更新前端代码（Vue）](#更新前端代码vue)
 - [环境变量说明](#环境变量说明)
 - [目录结构](#目录结构)
 - [常见问题](#常见问题)
@@ -90,9 +88,6 @@
 |------|----------|
 | Docker | >= 24.0 |
 | Docker Compose | >= 2.20 (V2) |
-| (手动部署) Python | >= 3.12 |
-| (手动部署) Node.js | >= 20.19 或 >= 22.12 |
-| (手动部署) pnpm/npm | 最新版 |
 | 磁盘空间 | >= 5GB (含 Docker 镜像) |
 | 内存 | >= 4GB (推荐 8GB) |
 
@@ -125,25 +120,20 @@ cd ..
 
 ### 3. 配置环境变量
 
-所有环境变量已在 `docker-compose.yml` 中预设了默认值。如需修改数据库密码、Redis 密码等敏感信息，编辑 `docker-compose.yml` 中对应服务的 `environment` 段。
+编辑项目根目录的 `.env` 文件，所有环境变量已在此统一管理。Docker Compose 会自动读取该文件并注入到对应容器中。
 
-### 4. 配置 AI 接口密钥
+**必须配置的项：**
+- `ADMIN_NAME` — 管理员账号名
+- `ADMIN_PASSWORD` — 管理员密码
+- `SECRET_KEY` — JWT 签名密钥（生产环境务必修改）
+- `BASE_URL` — AI 接口地址
+- `API_KEY` — AI 接口密钥
 
-后端已通过环境变量 `BASE_API` 和 `API_KEY` 接入 AI 客户端（参见 `app/Config.py` 与 `app/core/tools.py`）。在 `docker-compose.yml` 的 `api` 和 `worker` 服务中添加：
+**其他默认值已可用，如需修改：**
+- `POSTGRES_PASSWORD` — 数据库密码
+- `REDIS_PASSWORD` — Redis 密码
 
-```yaml
-environment:
-  - BASE_API=https://api.openai.com/v1
-  - API_KEY=sk-your-key-here
-```
-
-支持的 AI 功能：
-- 学生端苏格拉底式 AI 导师对话
-- 主观题自动评分
-- 学情分析报告生成
-- 教师端教学策略建议
-
-### 5. 启动所有服务
+### 4. 启动所有服务
 
 ```bash
 docker compose up -d
@@ -151,19 +141,24 @@ docker compose up -d
 
 首次启动会构建后端镜像，耗时约 5-10 分钟。
 
-### 6. 验证部署
+### 5. 验证部署
 
 - **前端页面**: http://localhost
 - **后端 API**: http://localhost/api/ （通过 Nginx 代理）
 - **Swagger 文档**: 默认不对外暴露，如需访问，在 `docker-compose.yml` 的 `api` 服务中添加 `ports: - "8000:8000"`，然后访问 `http://localhost:8000/docs`
 
-> ⚠️ **首次登录**：系统启动后默认已创建管理员账号。打开前端页面，点击「管理员登录」，使用以下凭据登录：
-> - **账号**: `Admin`
-> - **密码**: `Default_value`
+> ⚠️ **首次登录**：系统启动后会自动创建管理员账号，账号信息在 `.env` 文件中配置：
+> - **账号**: `ADMIN_NAME` 的值（默认 `Admin`）
+> - **密码**: `ADMIN_PASSWORD` 的值
 > 
-> **请尽快修改默认密码！** 默认密码硬编码在 `app/crud/db.py` 的 `init_mock_data()` 函数中，部署前可修改该文件中的 `"Default_value"` 为你自己的密码，重新构建镜像后生效。也可登录后进入系统管理后台手动修改密码。
+> **配置方法**：编辑项目根目录的 `.env` 文件，修改以下两项：
+> ```env
+> ADMIN_NAME=你的管理员账号
+> ADMIN_PASSWORD=你的管理员密码
+> ```
+> 修改后需要重新构建镜像才能生效：`docker compose up -d --build`
 
-### 7. 查看日志
+### 6. 查看日志
 
 ```bash
 # 查看所有服务日志
@@ -174,7 +169,7 @@ docker compose logs -f api
 docker compose logs -f worker
 ```
 
-### 8. 停止服务
+### 7. 停止服务
 
 ```bash
 docker compose down
@@ -188,169 +183,42 @@ docker compose down -v
 
 ---
 
-## 手动部署（不依赖 Docker）
+## 开发更新指南
 
-### 1. 后端启动
+### 更新后端代码（Python）
 
-#### 1.1 安装系统依赖
+当你修改了 `app/` 目录下的 Python 代码后，需要重新构建 `api` 和 `worker` 镜像并重启容器：
 
-**Ubuntu/Debian:**
 ```bash
-sudo apt-get update
-sudo apt-get install -y python3 python3-pip python3-venv postgresql redis-server
+# 重新构建并重启 api 和 worker 服务
+docker compose up -d --build api worker
 ```
 
-**CentOS/RHEL:**
-```bash
-sudo yum install python3 python3-pip postgresql-server redis
-```
+> **说明**：
+> - `--build` 会强制重新构建镜像，确保最新代码被打包
+> - 如果只修改了业务逻辑，也可使用 `docker compose restart api worker` 快速重启（但不会重新构建镜像）
+> - 如果修改了 `requirements.txt`，必须使用 `--build` 重新构建
 
-#### 1.2 配置 PostgreSQL
+### 更新前端代码（Vue）
 
-```bash
-# 创建数据库和用户
-sudo -u postgres psql
-CREATE DATABASE postgres;
-CREATE USER postgres WITH PASSWORD 'postgres';
-GRANT ALL PRIVILEGES ON DATABASE postgres TO postgres;
-\q
-```
-
-#### 1.3 配置 Redis
+当你修改了 `source_code_front/` 目录下的前端代码后，需要重新构建并替换 `dist` 目录：
 
 ```bash
-# 编辑 redis.conf，设置密码
-sudo sed -i 's/# requirepass foobared/requirepass redis123/' /etc/redis/redis.conf
-sudo systemctl restart redis
-```
-
-#### 1.4 安装 Python 依赖
-
-```bash
-cd AIEES
-python3 -m venv venv
-source venv/bin/activate  # Windows: venv\Scripts\activate
-pip install --upgrade pip
-pip install -r requirements.txt
-```
-
-#### 1.5 设置环境变量
-
-```bash
-export DB_HOST=localhost
-export DB_PORT=5432
-export DB_NAME=postgres
-export DB_USER=postgres
-export DB_PASSWORD=postgres
-export REDIS_HOST=localhost
-export REDIS_PORT=6379
-export REDIS_PASSWORD=redis123
-export SECRET_KEY=your-strong-secret-key
-```
-
-> **AI 配置**: 添加 `export BASE_API=https://api.openai.com/v1` 和 `export API_KEY=sk-your-key-here`（参考上方的 [配置 AI 接口密钥] 章节）。
-
-#### 1.6 启动 FastAPI 服务
-
-```bash
-# 开发模式（热重载）
-uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
-
-# 生产模式（推荐使用 Gunicorn）
-gunicorn app.main:app --workers 32 --worker-class uvicorn.workers.UvicornWorker --bind 0.0.0.0:8000
-```
-
-#### 1.7 启动 ARQ Worker（用于异步任务）
-
-```bash
-arq app.core.arq_jobs.WorkerSettings
-```
-
----
-
-### 2. 前端构建与部署
-
-参见 [前端重新打包](#前端重新打包vue-构建指南) 章节。
-
----
-
-### 3. Nginx 配置
-
-```bash
-# 安装 Nginx
-sudo apt-get install -y nginx
-
-# 复制 nginx.conf
-sudo cp nginx.conf /etc/nginx/nginx.conf
-
-# 确保前端静态文件目录存在
-sudo mkdir -p /var/www/frontend
-sudo cp -r frontend/dist/* /var/www/frontend/
-
-# 确保上传目录存在
-sudo mkdir -p /var/www/static/uploads
-sudo chmod -R 755 /var/www/static
-
-# 重启 Nginx
-sudo systemctl restart nginx
-```
-
-> **重要**: 如果后端不在本机，需要修改 `nginx.conf` 中的 `proxy_pass http://api:8000;` 为实际后端地址。
-
----
-
-## 前端重新打包（Vue 构建指南）
-
-当您修改了前端代码后，需要重新构建才能生效。
-
-### 构建步骤
-
-```bash
-# 1. 进入前端源码目录
+# 1. 进入前端目录并构建
 cd source_code_front
-
-# 2. 安装依赖（首次或依赖有变更时）
-npm install
-# 或使用 pnpm（推荐）
-pnpm install
-
-# 3. 修改 API 地址（如需）
-# 编辑 .env.production 文件
-# VITE_API_BASE_URL=http://你的服务器IP:8000/api
-# VITE_RESOURCE_BASE_URL=http://你的服务器IP:8000/api
-
-# 4. 构建生产版本
 npm run build
 
-# 5. 将构建产物复制到 Nginx 静态目录
-# Docker 部署方式：
+# 2. 将构建产物复制到 Nginx 静态目录
 cp -r dist/* ../frontend/dist/
-# 或在项目根目录执行：docker compose restart nginx
 
-# 手动部署方式：
-sudo cp -r dist/* /var/www/frontend/
-sudo systemctl restart nginx
+# 3. 回到项目根目录并重启 Nginx
+cd ..
+docker compose restart nginx
 ```
 
-### 构建产物说明
-
-构建完成后，`source_code_front/dist/` 目录下会生成：
-- `index.html` — 入口 HTML
-- `assets/` — 打包后的 JS、CSS 文件（文件名包含哈希用于缓存控制）
-- `pdf.worker.min.mjs` — PDF.js 的 worker 文件
-
-### 注意事项
-
-1. **API 地址配置**: 构建前务必检查 `.env.production` 中的 API 地址指向正确的后端服务器。
-   - **Docker Compose + Nginx 部署**: 应设为 `http://localhost/api`（请求通过 Nginx 代理到后端）。
-   - **手动部署 + 直连后端**: 保持 `http://127.0.0.1:8000/api`。
-   - **前后端分离开发**: 使用 `http://localhost:8000/api`（配合后端开发服务器）。
-
-2. **视口单位 (vw) 适配**: 项目使用 `postcss-px-to-viewport-8-plugin` 进行移动端适配，基准宽度为 `1380px`（适配 11 寸平板横屏）。如需修改，编辑 `vite.config.js` 中的 `viewportWidth`。
-
-3. **Node 版本**: 构建环境必须满足 `package.json` 中 `engines.node` 的要求（>=20.19.0 || >=22.12.0）。
-
-4. **构建耗时**: 首次构建较慢（需下载依赖），后续构建通常 10-30 秒完成。
+> **说明**：
+> - Nginx 容器通过 volume 挂载 `./frontend/dist` 目录，替换文件后只需 `restart` 即可生效
+> - 如果修改了 `.env.production` 中的 API 地址，构建时必须重新指定
 
 ---
 
@@ -360,6 +228,8 @@ sudo systemctl restart nginx
 
 | 变量 | 说明 | 默认值 |
 |------|------|--------|
+| `ADMIN_NAME` | 管理员账号名 | `Admin` |
+| `ADMIN_PASSWORD` | 管理员密码 | `Default_value` |
 | `DB_HOST` | 数据库主机 | `db` |
 | `DB_PORT` | 数据库端口 | `5432` |
 | `DB_NAME` | 数据库名 | `postgres` |
@@ -368,14 +238,9 @@ sudo systemctl restart nginx
 | `REDIS_HOST` | Redis 主机 | `redis` |
 | `REDIS_PORT` | Redis 端口 | `6379` |
 | `REDIS_PASSWORD` | Redis 密码 | `redis123` |
-| `BASE_API` | AI 接口地址（OpenAI 兼容） | `""`（需设置） |
+| `BASE_URL` | AI 接口地址（OpenAI 兼容） | `""`（需设置） |
 | `API_KEY` | AI 接口密钥 | `""`（需设置） |
-| `SECRET_KEY` | JWT 签名密钥 | `Default_value`（**生产环境务必修改**） |
-
-> **安全提醒**: 生产环境部署前，请务必修改以下默认值：
-> - `SECRET_KEY` — JWT 密钥
-> - `POSTGRES_PASSWORD` — 数据库密码
-> - `REDIS_PASSWORD` — Redis 密码
+| `SECRET_KEY` | JWT 签名密钥 | `fe6ae3482d47273b4b969f048e248f4ede8a8fc00bc01f35bf4257b6c950ec84`（**生产环境务必修改**） |
 
 ### 前端环境变量
 
@@ -383,6 +248,12 @@ sudo systemctl restart nginx
 |------|------|--------|
 | `VITE_API_BASE_URL` | API 请求基础地址 | `http://127.0.0.1:8000/api` |
 | `VITE_RESOURCE_BASE_URL` | 静态资源基础地址 | `http://127.0.0.1:8000/api` |
+
+> **安全提醒**: 生产环境部署前，请务必修改以下默认值：
+> - `ADMIN_NAME` / `ADMIN_PASSWORD` — 管理员账号密码
+> - `SECRET_KEY` — JWT 密钥
+> - `POSTGRES_PASSWORD` — 数据库密码
+> - `REDIS_PASSWORD` — Redis 密码
 
 ---
 
@@ -448,6 +319,7 @@ AIEES/
 │   ├── system.log                # 系统日志
 │   └── upstream.log              # 上游服务日志
 │
+├── .env                          # 环境变量配置
 ├── docker-compose.yml            # Docker Compose 编排
 ├── Dockerfile                    # 后端镜像构建
 ├── nginx.conf                    # Nginx 配置

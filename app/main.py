@@ -19,11 +19,14 @@ from app.crud.db import AppBusinessException
 from app.core.database import warmup_connection_pool, engine
 # 导入 Redis 连接池关闭
 from app.core.redis_pool import close_redis_pools, init_arq_redis
+#
+from dotenv import load_dotenv
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     # ==================== 启动阶段 ====================
+    load_dotenv()  # 从项目根目录 /AIEES 启动 FastAPI（ uvicorn app.main:app）， load_dotenv会自动找到同级的 .env 文件
     try:
         UrlConfig.init_directories()
     except Exception as e:

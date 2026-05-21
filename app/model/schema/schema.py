@@ -156,10 +156,3 @@ class UserUpdatePassword(BaseModel):
     """函数目的：修改密码请求模型"""
     old_password: str
     new_password: str
-
-    @model_validator(mode='after')
-    def check_passwords_match(self):
-        """函数目的：字段级校验，确保新密码与确认密码一致"""
-        if self.new_password != self.confirm_password:
-            raise ValueError("两次输入的密码不一致")
-        return self

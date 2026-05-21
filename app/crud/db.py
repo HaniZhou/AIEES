@@ -19,6 +19,7 @@ from app.model.tables.models import *
 from app.model.schema.course import CourseInfo, ChapterBatchPayload, CourseDetailRead, CourseRead
 from app.model.schema.schema import RoleType, UserInDB, UserPublish
 from app.model.schema.classes import ClassRead
+from app.Config import SecretConfig
 
 
 # 纯业务异常定义
@@ -37,7 +38,7 @@ async def init_mock_data():
     from app.core.security import get_password_hash
 
     await db_insert_new_admin(
-        UserInDB(id="Admin", role=RoleType.admin, username="Default_value", hashed_password=get_password_hash("Default_value")))
+        UserInDB(id="Admin", role=RoleType.admin, username=SecretConfig.ADMIN_NAME, hashed_password=get_password_hash(SecretConfig.ADMIN_PASSWORD)))
 
 
 async def create_bd_and_table():

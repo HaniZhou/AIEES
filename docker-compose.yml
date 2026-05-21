@@ -1,4 +1,4 @@
-# version 已废弃，Docker Compose V2 会忽略它，删掉避免警告
+# Docker Compose V2
 
 # 定义持久化数据卷
 volumes:
@@ -13,14 +13,14 @@ services:
     image: postgres:18.3
     container_name: psql
     environment:
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgres
-      POSTGRES_DB: postgres
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
     volumes:
       - postgres_data:/var/lib/postgresql
     restart: unless-stopped
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER}"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -33,12 +33,12 @@ services:
   redis:
     image: redis:8.4.2-alpine
     container_name: redis_server
-    command: redis-server --appendonly yes --requirepass redis123 --maxmemory 500mb --maxmemory-policy allkeys-lru
+    command: redis-server --appendonly yes --requirepass ${REDIS_PASSWORD} --maxmemory 500mb --maxmemory-policy allkeys-lru
     volumes:
       - redis_data:/data
     restart: unless-stopped
     healthcheck:
-      test: ["CMD", "redis-cli", "-a", "redis123", "ping"]
+      test: ["CMD", "redis-cli", "-a", "${REDIS_PASSWORD}", "ping"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -54,16 +54,21 @@ services:
     expose:
       - "8000"
     environment:
-      - DATABASE_URL=postgresql+asyncpg://postgres:postgres@db:5432/postgres
-      - REDIS_URL=redis://:redis123@redis:6379/0
-      - REDIS_HOST=redis
-      - REDIS_PORT=6379
-      - DB_HOST=db
-      - DB_PORT=5432
-      - DB_NAME=postgres
-      - DB_USER=postgres
-      - DB_PASSWORD=postgres
-      - REDIS_PASSWORD=redis123
+      - DATABASE_URL=postgresql+asyncpg://${DOCKER_DB_USER}:${DOCKER_DB_PASSWORD}@${DOCKER_DB_HOST}:${DOCKER_DB_PORT}/${DOCKER_DB_NAME}
+      - REDIS_URL=redis://:${DOCKER_REDIS_PASSWORD}@${DOCKER_REDIS_HOST}:${DOCKER_REDIS_PORT}/0
+      - REDIS_HOST=${DOCKER_REDIS_HOST}
+      - REDIS_PORT=${DOCKER_REDIS_PORT}
+      - DB_HOST=${DOCKER_DB_HOST}
+      - DB_PORT=${DOCKER_DB_PORT}
+      - DB_NAME=${DOCKER_DB_NAME}
+      - DB_USER=${DOCKER_DB_USER}
+      - DB_PASSWORD=${DOCKER_DB_PASSWORD}
+      - REDIS_PASSWORD=${DOCKER_REDIS_PASSWORD}
+      - ADMIN_NAME=${ADMIN_NAME}
+      - ADMIN_PASSWORD=${ADMIN_PASSWORD}
+      - SECRET_KEY=${SECRET_KEY}
+      - BASE_URL=${BASE_URL}
+      - API_KEY=${API_KEY}
     volumes:
       - ./static/uploads:/app/static/uploads
       - ./logs:/app/logs
@@ -84,16 +89,21 @@ services:
     container_name: arq_worker
     command: ["arq", "app.core.arq_jobs.WorkerSettings"]
     environment:
-      - DATABASE_URL=postgresql+asyncpg://postgres:postgres@db:5432/postgres
-      - REDIS_URL=redis://:redis123@redis:6379/0
-      - REDIS_HOST=redis
-      - REDIS_PORT=6379
-      - DB_HOST=db
-      - DB_PORT=5432
-      - DB_NAME=postgres
-      - DB_USER=postgres
-      - DB_PASSWORD=postgres
-      - REDIS_PASSWORD=redis123
+      - DATABASE_URL=postgresql+asyncpg://${DOCKER_DB_USER}:${DOCKER_DB_PASSWORD}@${DOCKER_DB_HOST}:${DOCKER_DB_PORT}/${DOCKER_DB_NAME}
+      - REDIS_URL=redis://:${DOCKER_REDIS_PASSWORD}@${DOCKER_REDIS_HOST}:${DOCKER_REDIS_PORT}/0
+      - REDIS_HOST=${DOCKER_REDIS_HOST}
+      - REDIS_PORT=${DOCKER_REDIS_PORT}
+      - DB_HOST=${DOCKER_DB_HOST}
+      - DB_PORT=${DOCKER_DB_PORT}
+      - DB_NAME=${DOCKER_DB_NAME}
+      - DB_USER=${DOCKER_DB_USER}
+      - DB_PASSWORD=${DOCKER_DB_PASSWORD}
+      - REDIS_PASSWORD=${DOCKER_REDIS_PASSWORD}
+      - ADMIN_NAME=${ADMIN_NAME}
+      - ADMIN_PASSWORD=${ADMIN_PASSWORD}
+      - SECRET_KEY=${SECRET_KEY}
+      - BASE_URL=${BASE_URL}
+      - API_KEY=${API_KEY}
     volumes:
       - ./logs:/app/logs
     depends_on:
@@ -112,7 +122,7 @@ services:
     image: nginx:mainline-alpine3.23
     container_name: nginx
     ports:
-      - "80:80"
+      - "0.0.0.0:80:80"
     volumes:
       - ./frontend/dist:/var/www/frontend:ro
       - ./static/uploads:/var/www/static/uploads:ro
