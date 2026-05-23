@@ -9,6 +9,7 @@ from app.crud.db import (
     db_insert_new_teacher,
     db_get_class_id_in_organization,
     db_get_organization_id_by_name,
+    db_get_organization_by_id,
     db_delete_teacher,
     db_delete_student,
     db_delete_organization,
@@ -179,8 +180,9 @@ async def create_new_class(
         - payload: TokenData, 管理员身份凭证。
     返回值：创建成功返回 201。
     """
-    await db_create_class_direct(class_name=req.class_name, organization_id=req.organization_id)
-    return _created({})
+    await db_get_organization_by_id(req.organization_id)
+    class_id = await db_create_class_direct(class_name=req.class_name, organization_id=req.organization_id)
+    return _created({"class_id": class_id})
 
 
 @router.delete("/class/delete")

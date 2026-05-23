@@ -1,5 +1,8 @@
 <template>
-  <div class="agi-container">
+  <div class="agi-container" :class="{ 'is-task-mode': isInTaskMode }">
+    <!-- 任务模式遮罩层 -->
+    <div v-if="isOpen && isInTaskMode" class="agi-overlay" @click="togglePanel(false)"></div>
+
     <div v-show="!hideTrigger" class="agi-trigger" :class="{ 'is-open': isOpen }" @click="togglePanel">
       <svg class="trigger-icon" viewBox="0 0 24 24" width="24" height="24" fill="none" xmlns="http://www.w3.org/2000/svg">
         <path d="M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" fill="white"/>
@@ -23,7 +26,7 @@
             </template>
           </div>
           <div v-if="!isInTaskMode" class="header-actions">
-            <button class="header-action-btn" @click="clearCurrentChat" aria-label="清空对话">
+            <button class="header-action-btn" @click="handleClearHistory" aria-label="清空对话">
               <van-icon name="delete-o" size="18" color="#999"/>
             </button>
           </div>
@@ -82,6 +85,7 @@
     </transition>
   </div>
 </template>
+
 <script setup>
 import {ref, computed, onMounted, nextTick, reactive, onBeforeUnmount, watch} from 'vue'
 import {showToast, showConfirmDialog} from 'vant'
@@ -352,10 +356,6 @@ const handleClearHistory = async () => {
     localStorage.removeItem('gai_chat_history')
   } catch (e) {
   }
-}
-const clearCurrentChat = () => {
-  if (isInTaskMode.value) taskMessages.value = [];
-  else allMessages.value = [];
 }
 const startTaskMode = async ({courseName, taskTitle, taskDesc, promptText, courseId, taskId, apiUrl}) => {
   Object.assign(taskContext, {courseName, taskTitle, taskDesc, courseId, taskId, apiUrl})

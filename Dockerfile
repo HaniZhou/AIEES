@@ -32,5 +32,4 @@ COPY . /app/
 EXPOSE 8000
 
 # 默认启动命令（启动 FastAPI 服务）
-# 实际生产中可以换成 gunicorn:
  CMD ["gunicorn", "app.main:app", "--workers", "32", "--worker-class", "uvicorn.workers.UvicornWorker", "--bind", "0.0.0.0:8000"]

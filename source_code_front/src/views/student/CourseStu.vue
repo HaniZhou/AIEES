@@ -264,9 +264,19 @@ const handleStartGaiTask = (task) => {
 }
 
 /** 触发 GAI 组件内部的提交校验与事件抛出 */
-const handleCallGaiSubmit = () => {
-  if (globalGaiRef.value) {
+const handleCallGaiSubmit = async () => {
+  if (!globalGaiRef.value) return
+
+  try {
+    // 弹出确认对话框
+    await showConfirmDialog({
+      title: '提交确认',
+      message: '确认提交该探究任务吗？提交后将无法修改。'
+    })
+    // 用户点击确认后，执行提交
     globalGaiRef.value.handleSubmitTask()
+  } catch (error) {
+    // 用户点击取消，捕捉异常，不做任何处理
   }
 }
 
@@ -274,7 +284,7 @@ const handleCallGaiSubmit = () => {
 const handleTaskSubmit = async ({taskId, courseId: cId, messages}) => {
   try {
     await submit_gai_task(cId, taskId, messages)
-    showToast({message: '提交成功，AI与老师将进行评分', type: 'success'})
+    showToast({message: '提交成功', type: 'success'})
     const targetTask = gaiTaskList.value.find(t => t.id === taskId)
     if (targetTask) targetTask.isCompleted = true
     currentActiveTaskId.value = ''

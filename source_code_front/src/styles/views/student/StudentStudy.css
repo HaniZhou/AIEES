@@ -410,23 +410,3 @@
 .student-study-page.gai-split-active ::v-deep(.agi-trigger) {
   display: none !important;
 }
-
-/* 8. 移动端兼容保护 */
-@media (max-width: 768px) {
-  .student-study-page.gai-split-active ::v-deep(.agi-panel) {
-    top: 0 !important;
-    bottom: 0 !important;
-    right: 0 !important;
-    width: 100vw !important;
-    height: 100dvh !important;
-    border-radius: 0 !important;
-  }
-  .area-content.gai-split-active {
-    margin-right: 0 !important;
-    width: 100% !important;
-  }
-  /* 移动端下打开时统一隐藏悬浮球 */
-  .student-study-page ::v-deep(.agi-trigger.is-open) {
-    display: none !important;
-  }
-}

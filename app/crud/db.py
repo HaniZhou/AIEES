@@ -121,6 +121,14 @@ async def db_get_organization_id_by_name(organization_name: str) -> int:
         return org.organization_id
 
 
+async def db_get_organization_by_id(organization_id: int) -> Organization:
+    async with async_session_factory() as session:
+        org = await session.get(Organization, organization_id)
+        if not org:
+            raise AppBusinessException(404, "组织不存在")
+        return org
+
+
 async def db_get_class_id_in_organization(class_name: str, organization_id: int) -> int:
     async with async_session_factory() as session:
         statement = select(StudentClass).where(StudentClass.class_name == class_name,
@@ -1118,17 +1126,21 @@ async def db_update_gai_task_analysis_result(completion_id: int, result_text: st
 async def db_get_course_students(course_id: uuid.UUID, teacher_id: str) -> list[dict]:
     async with async_session_factory() as session:
         course = await session.get(Course, course_id)
-        if not course or course.teacher_id != teacher_id: raise AppBusinessException(403, "无权查看此课程")
-        return [{"id": s_id, "name": s_name} for s_id, s_name in (await session.exec(
-            select(Student.id, Student.username).join(CourseRegistrationRecord,
-                                                      Student.id == CourseRegistrationRecord.student_id).where(
+        if not course or course.teacher_id != teacher_id:
+            raise AppBusinessException(403, "无权查看此课程")
+        return [{"id": s_id, "name": s_name, "class_name": c_name} for s_id, s_name, c_name in (await session.exec(
+            select(Student.id, Student.username, StudentClass.class_name).join(CourseRegistrationRecord, Student.id == CourseRegistrationRecord.student_id).join(
+                StudentClass, Student.class_id == StudentClass.class_id).where(
                 CourseRegistrationRecord.course_id == course_id).order_by(Student.id))).all()]
 
 
 async def db_get_student_weekly_study_in_course(student_id: str, course_id: uuid.UUID, teacher_id: str) -> list[float]:
     async with async_session_factory() as session:
         course = await session.get(Course, course_id)
-        if not course or course.teacher_id != teacher_id: raise AppBusinessException(403, "无权查看此课程数据")
+        if not course:
+            raise AppBusinessException(404, "课程不存在")
+        if course.teacher_id != teacher_id:
+            raise AppBusinessException(403, "无权查看此课程数据")
         records = (await session.exec(select(StudentDailyStudyTimeInCourse.study_data).where(
             StudentDailyStudyTimeInCourse.student_id == student_id,
             StudentDailyStudyTimeInCourse.course_id == course_id))).all()
@@ -1148,12 +1160,12 @@ async def db_get_completion_details(course_id: uuid.UUID, record_type: str, targ
     """
     函数目的：获取指定课程下，特定章节或测验任务的全班学生完成情况及得分明细。
     参数信息：
-        - course_id: uuid.UUID，目标课程的唯一标识。
-        - record_type: str，记录类型，只能为 "section"（章节）或 "task"（测验）。
-        - target_id: int，目标资源的ID（对应 section_id 或 task_id）。
-        - teacher_id: str，当前操作教师的ID，用于后端越权校验。
+    - course_id: uuid.UUID，目标课程的唯一标识。
+    - record_type: str，记录类型，只能为 "section"（章节）或 "task"（测验）。
+    - target_id: int，目标资源的ID（对应 section_id 或 task_id）。
+    - teacher_id: str，当前操作教师的ID，用于后端越权校验。
     返回值信息：
-        - list[dict]: 包含学生姓名、是否完成、得分的字典列表。
+    - list[dict]: 包含学生姓名、班级名称、是否完成、得分的字典列表。
     """
     async with async_session_factory() as session:
         course = await session.get(Course, course_id)
@@ -1163,16 +1175,14 @@ async def db_get_completion_details(course_id: uuid.UUID, record_type: str, targ
         if record_type == "section":
             if not (await session.exec(
                     select(Section.section_id).join(Chapter).where(
-                        Section.section_id == target_id,
-                        Chapter.course_id == course_id
+                        Section.section_id == target_id, Chapter.course_id == course_id
                     )
             )).first():
                 raise AppBusinessException(404, "目标资源不存在")
         elif record_type == "task":
             if not (await session.exec(
                     select(Task.task_id).where(
-                        Task.task_id == target_id,
-                        Task.course_id == course_id
+                        Task.task_id == target_id, Task.course_id == course_id
                     )
             )).first():
                 raise AppBusinessException(404, "目标资源不存在")
@@ -1180,11 +1190,13 @@ async def db_get_completion_details(course_id: uuid.UUID, record_type: str, targ
             raise AppBusinessException(400, "type 参数错误")
 
         students = (await session.exec(
-            select(Student.id, Student.username).join(CourseRegistrationRecord).where(
+            select(Student.id, Student.username, StudentClass.class_name).join(CourseRegistrationRecord).join(
+                StudentClass, Student.class_id == StudentClass.class_id).where(
                 CourseRegistrationRecord.course_id == course_id
             )
         )).all()
-        student_map = {s_id: s_name for s_id, s_name in students}
+        student_map = {s_id: {"name": s_name, "class_name": c_name or "未分配班级"} for s_id, s_name, c_name in
+                       students}
 
         completion_map = {}
         if record_type == "section":
@@ -1205,8 +1217,13 @@ async def db_get_completion_details(course_id: uuid.UUID, record_type: str, targ
                 completion_map[s_id] = score if score is not None else 0
 
         return [
-            {"student_name": s_name, "is_completed": s_id in completion_map, "score": completion_map.get(s_id, 0)}
-            for s_id, s_name in student_map.items()
+            {
+                "student_name": info["name"],
+                "class_name": info["class_name"],
+                "is_completed": s_id in completion_map,
+                "score": completion_map.get(s_id, 0)
+            }
+            for s_id, info in student_map.items()
         ]
 
 
@@ -1218,20 +1235,27 @@ async def db_get_gai_task_students(course_id: uuid.UUID, task_id: int, teacher_i
         task = await session.get(AnalysisTask, task_id)
         if not task or task.course_id != course_id:
             raise AppBusinessException(404, "任务不存在")
-        students = (await session.exec(select(Student.id, Student.username).join(CourseRegistrationRecord).where(
-            CourseRegistrationRecord.course_id == course_id))).all()
-        if not students:
-            return []
+
+        students = (await session.exec(
+            select(Student.id, Student.username, StudentClass.class_name).join(CourseRegistrationRecord).join(
+                StudentClass, Student.class_id == StudentClass.class_id).where(
+                CourseRegistrationRecord.course_id == course_id))).all()
+
+        if not students: return []
+
         completed_set = set(
             (await session.exec(
                 select(AnalysisTaskCompletion.student_id).where(
                     AnalysisTaskCompletion.course_id == course_id,
                     AnalysisTaskCompletion.analysis_task_id == task_id,
-                    AnalysisTaskCompletion.student_id.in_([s_id for s_id, _ in students])
+                    AnalysisTaskCompletion.student_id.in_([s_id for s_id, _, _ in students])
                 )
             )).all()
         )
-        return [{"id": s_id, "name": s_name, "is_completed": s_id in completed_set} for s_id, s_name in students]
+
+        return [
+            {"id": s_id, "name": s_name, "class_name": c_name, "is_completed": s_id in completed_set}
+            for s_id, s_name, c_name in students]
 
 
 async def db_get_gai_task_student_analysis(course_id: uuid.UUID, task_id: int, teacher_id: str,
