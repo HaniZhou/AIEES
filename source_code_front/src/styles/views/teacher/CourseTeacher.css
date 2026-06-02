@@ -1510,3 +1510,145 @@
     max-height: 0;
     opacity: 0;
 }
+
+/* ==================== 任务校验失败标红样式 ==================== */
+.question-edit-card.has-validation-error {
+    border: 2px solid #FA6464;
+    background-color: #FFF5F5;
+}
+
+.question-edit-card.has-validation-error .q-type-btn.active {
+    background: #FA6464;
+    border-color: #FA6464;
+}
+
+/* ==================== 任务校验失败标红与抖动动画样式 ==================== */
+.question-edit-card.has-validation-error {
+    border: 2px solid #FA6464;
+    background-color: #FFF5F5;
+}
+
+.question-edit-card.has-validation-error .q-type-btn.active {
+    background: #FA6464;
+    border-color: #FA6464;
+}
+
+@keyframes shake {
+    0%, 100% {
+        transform: translateX(0);
+    }
+    10%, 30%, 50%, 70%, 90% {
+        transform: translateX(-4px);
+    }
+    20%, 40%, 60%, 80% {
+        transform: translateX(4px);
+    }
+}
+
+.question-edit-card.shake-animation {
+    animation: shake 0.6s ease-in-out;
+}
+
+/* ==================== 人机交互任务大弹窗样式 ==================== */
+.gai-task-modal-content {
+    width: 600px;
+    height: 85vh;
+    background: #FFF;
+    border-radius: 16px;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    box-shadow: 0 16px 40px rgba(0, 0, 0, 0.15);
+}
+
+/* 紧凑化头部 */
+.gai-task-modal-header {
+    padding: 7px 20px;
+    border-bottom: 1px solid #EBEBEB;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-shrink: 0;
+}
+
+.gai-task-modal-header h3 {
+    margin: 0;
+    font-size: 18px;
+    color: #333;
+}
+
+/* 内容滚动区 */
+.gai-task-modal-body {
+    flex: 1;
+    padding: 15px;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+}
+
+/* 表单项：左侧标签 + 右侧输入框 (水平排布) */
+.gai-form-item {
+    display: flex;
+    flex-direction: row;
+    align-items: flex-start;
+    gap: 16px;
+}
+
+/* 需要撑满剩余空间的项 (描述、分析需求) */
+.gai-form-item.gai-flex-item {
+    flex: 1;
+    min-height: 0;
+}
+
+/* 表单项：左侧标签 + 右侧输入框 (水平排布) */
+.gai-form-item {
+    display: flex;
+    flex-direction: row;
+    align-items: flex-start; /* 顶部对齐，适配不同字数的垂直标签 */
+    gap: 12px;
+}
+
+/* 需要撑满剩余空间的项 (描述、分析需求) */
+.gai-form-item.gai-flex-item {
+    flex: 1;
+    min-height: 0;
+}
+
+/* 标签基础样式 - 垂直排布 */
+.gai-form-item-label {
+    font-size: 14px;
+    font-weight: bold;
+    color: #333;
+    flex-shrink: 0;
+    writing-mode: vertical-rl;
+    text-orientation: upright;
+    letter-spacing: 4px;
+    text-align: left;
+    line-height: 1;
+    padding-top:10px;
+}
+
+/* 让输入框和文本域占满右侧空间 */
+.gai-form-item .custom-input,
+.gai-form-item .custom-textarea {
+    flex: 1;
+}
+
+.gai-flex-item .custom-textarea {
+    min-height: 100px;
+    height: 100%;
+    resize: none;
+}
+
+
+/* 底部按钮区：自适应高度，两端对齐 */
+.gai-task-modal-footer {
+    padding: 5px 20px;
+    border-top: 1px solid #EBEBEB;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-shrink: 0;
+}
+

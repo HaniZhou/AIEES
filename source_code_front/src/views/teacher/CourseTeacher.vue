@@ -12,7 +12,8 @@
             <button v-if="isEditMode" class="delete-course-btn" @click="handleDeleteCourse">删除课程</button>
           </div>
           <div class="view-switcher-col" v-if="!isEditMode">
-            <div class="switch-tab-row" :class="{ active: activeLeftTab === 'chapter' }" @click="activeLeftTab = 'chapter'">
+            <div class="switch-tab-row" :class="{ active: activeLeftTab === 'chapter' }"
+                 @click="activeLeftTab = 'chapter'">
               <span>章节</span>
               <div class="active-indicator" v-if="activeLeftTab === 'chapter'"></div>
             </div>
@@ -20,11 +21,13 @@
               <span>任务</span>
               <div class="active-indicator" v-if="activeLeftTab === 'task'"></div>
             </div>
-            <div class="switch-tab-row" :class="{ active: activeLeftTab === 'gai-task' }" @click="activeLeftTab = 'gai-task'">
+            <div class="switch-tab-row" :class="{ active: activeLeftTab === 'gai-task' }"
+                 @click="activeLeftTab = 'gai-task'">
               <span>人机交互任务</span>
               <div class="active-indicator" v-if="activeLeftTab === 'gai-task'"></div>
             </div>
-            <div v-if="!isEditMode" class="switch-tab-row" :class="{ active: activeLeftTab === 'analysis' }" @click="switchToAnalysis">
+            <div v-if="!isEditMode" class="switch-tab-row" :class="{ active: activeLeftTab === 'analysis' }"
+                 @click="switchToAnalysis">
               <span>学生学习分析</span>
               <div class="active-indicator" v-if="activeLeftTab === 'analysis'"></div>
             </div>
@@ -48,18 +51,22 @@
                 <div class="chapter-group">
                   <div class="chapter-header" @click.self="toggleChapter(cIndex)">
                     <div class="header-left">
-                      <span v-if="!isEditMode || editingChapterId !== chapter.id" class="chapter-title" @click="handleChapterClick(chapter)">{{ chapter.title }}</span>
-                      <input v-else type="text" class="chapter-title-input" v-model="chapter.title" v-focus @blur="editingChapterId = null" @keyup.enter="editingChapterId = null"/>
+                      <span v-if="!isEditMode || editingChapterId !== chapter.id" class="chapter-title"
+                            @click="handleChapterClick(chapter)">{{ chapter.title }}</span>
+                      <input v-else type="text" class="chapter-title-input" v-model="chapter.title" v-focus
+                             @blur="editingChapterId = null" @keyup.enter="editingChapterId = null"/>
                     </div>
                     <div class="header-right">
                       <div v-if="isEditMode" class="action-btn-circle btn-danger" @click.stop="deleteChapter(cIndex)">
                         <van-icon name="minus" size="14"/>
                       </div>
-                      <van-icon name="arrow" class="arrow-icon" :class="{ 'is-expanded': chapter.expanded }" @click="toggleChapter(cIndex)"/>
+                      <van-icon name="arrow" class="arrow-icon" :class="{ 'is-expanded': chapter.expanded }"
+                                @click="toggleChapter(cIndex)"/>
                     </div>
                   </div>
                   <div class="section-list" :class="{ 'is-expanded': chapter.expanded }">
-                    <div v-for="(section, sIndex) in chapter.sections" :key="section.id" class="section-item" @click="handleSectionClick(section, chapter)">
+                    <div v-for="(section, sIndex) in chapter.sections" :key="section.id" class="section-item"
+                         @click="handleSectionClick(section, chapter)">
                       <div class="section-item-left">
                         <div class="status-icon" :class="section.hasResource ? 'status-done' : 'status-pending'">
                           <van-icon v-if="section.hasResource" name="success" color="#FFFFFF" size="12"/>
@@ -73,13 +80,15 @@
                         </div>
                       </div>
                     </div>
-                    <div v-if="isEditMode" class="add-section-btn" @click.stop="openSectionModal(chapter.localId || chapter.id)">
+                    <div v-if="isEditMode" class="add-section-btn"
+                         @click.stop="openSectionModal(chapter.localId || chapter.id)">
                       <van-icon name="plus" size="16" color="#4A90E2"/>
                       <span>添加小节</span>
                     </div>
                   </div>
                 </div>
-                <div v-if="isEditMode && cIndex === chapterList.length - 1" class="insert-bar" @click="insertChapter(cIndex + 1)">
+                <div v-if="isEditMode && cIndex === chapterList.length - 1" class="insert-bar"
+                     @click="insertChapter(cIndex + 1)">
                   <van-icon name="plus" size="14" color="#4A90E2"/>
                 </div>
               </div>
@@ -94,7 +103,10 @@
               </div>
               <div class="task-col-middle"><span class="task-name">{{ t.task_title }}</span></div>
               <div class="task-col-right">
-                <span v-if="!isEditMode && t.deadline" class="countdown-text" :class="{ 'is-expired': getCountdown(t.deadline) === '已截止' }">{{ getCountdown(t.deadline) }}</span>
+                <span v-if="!isEditMode && t.deadline" class="countdown-text"
+                      :class="{ 'is-expired': getCountdown(t.deadline) === '已截止' }">{{
+                    getCountdown(t.deadline)
+                  }}</span>
                 <div v-if="isEditMode" class="action-btn-circle btn-danger" @click.stop="deleteTask(index, 'task')">
                   <van-icon name="minus" size="14"/>
                 </div>
@@ -107,13 +119,17 @@
 
           <!-- 视图三：人机交互任务 -->
           <div v-if="activeLeftTab === 'gai-task'" class="task-view">
-            <div v-for="(gt, index) in gaiTaskList" :key="gt.analysis_task_id" class="task-card" @click="handleGaiTaskClick(gt)">
+            <div v-for="(gt, index) in gaiTaskList" :key="gt.analysis_task_id" class="task-card"
+                 @click="handleGaiTaskClick(gt)">
               <div class="task-col-left">
                 <van-icon name="chat-o" class="task-type-icon"/>
               </div>
               <div class="task-col-middle"><span class="task-name">{{ gt.analysis_task_title }}</span></div>
               <div class="task-col-right">
-                <span v-if="!isEditMode && gt.deadline" class="countdown-text" :class="{ 'is-expired': getCountdown(gt.deadline) === '已截止' }">{{ getCountdown(gt.deadline) }}</span>
+                <span v-if="!isEditMode && gt.deadline" class="countdown-text"
+                      :class="{ 'is-expired': getCountdown(gt.deadline) === '已截止' }">{{
+                    getCountdown(gt.deadline)
+                  }}</span>
                 <div v-if="isEditMode" class="action-btn-circle btn-danger" @click.stop="deleteTask(index, 'gai-task')">
                   <van-icon name="minus" size="14"/>
                 </div>
@@ -127,18 +143,22 @@
           <!-- 视图四：学生学习分析 -->
           <div v-if="activeLeftTab === 'analysis'" class="analysis-view-container">
             <div class="analysis-left-list blur-vertical">
-              <div class="analysis-stu-item" :class="{ active: selectedAnalysisStudentId === 'all' }" @click="selectAnalysisStudent('all')">
+              <div class="analysis-stu-item" :class="{ active: selectedAnalysisStudentId === 'all' }"
+                   @click="selectAnalysisStudent('all')">
                 全部
               </div>
               <template v-for="group in groupStudentsByClass(studentList)" :key="group.class_name">
                 <div class="class-group-card">
                   <div class="class-group-header" @click="toggleClassExpand('analysis-', group.class_name)">
                     <span class="class-group-title">{{ group.class_name }}</span>
-                    <van-icon name="arrow" class="class-arrow" :class="{ 'is-expanded': isClassExpanded('analysis-', group.class_name) }"/>
+                    <van-icon name="arrow" class="class-arrow"
+                              :class="{ 'is-expanded': isClassExpanded('analysis-', group.class_name) }"/>
                   </div>
                   <transition name="class-slide">
                     <div class="class-group-body-inner" v-if="isClassExpanded('analysis-', group.class_name)">
-                      <div v-for="stu in group.students" :key="stu.id" class="analysis-stu-item" :class="{ active: selectedAnalysisStudentId === stu.id }" @click="selectAnalysisStudent(stu.id)">
+                      <div v-for="stu in group.students" :key="stu.id" class="analysis-stu-item"
+                           :class="{ active: selectedAnalysisStudentId === stu.id }"
+                           @click="selectAnalysisStudent(stu.id)">
                         {{ stu.name }}
                       </div>
                     </div>
@@ -153,20 +173,24 @@
               <template v-else>
                 <div class="analysis-charts-row">
                   <div class="analysis-chart-box">
-                    <van-circle v-model:current-rate="currentAnalysisChapterRate" :rate="analysisRates.chapterRate" :speed="100" color="#4A90E2" size="80px" :stroke-width="10">
-                      <div class="circle-inner"><span class="circle-text-sm">{{ analysisData.chapterDone }}%</span> </div>
+                    <van-circle v-model:current-rate="currentAnalysisChapterRate" :rate="analysisRates.chapterRate"
+                                :speed="100" color="#4A90E2" size="80px" :stroke-width="10">
+                      <div class="circle-inner"><span class="circle-text-sm">{{ analysisData.chapterDone }}%</span>
+                      </div>
                     </van-circle>
                     <span class="analysis-chart-label">章节</span>
                   </div>
                   <div class="analysis-chart-box">
-                    <van-circle v-model:current-rate="currentAnalysisTaskRate" :rate="analysisRates.taskRate" :speed="100" color="#10B981" size="80px" :stroke-width="10">
+                    <van-circle v-model:current-rate="currentAnalysisTaskRate" :rate="analysisRates.taskRate"
+                                :speed="100" color="#10B981" size="80px" :stroke-width="10">
                       <div class="circle-inner"><span class="circle-text-sm">{{ analysisData.taskDone }}%</span></div>
                     </van-circle>
                     <span class="analysis-chart-label">任务</span>
                     <span class="analysis-chart-score">完成质量：{{ analysisData.taskQuality }}</span>
                   </div>
                   <div class="analysis-chart-box">
-                    <van-circle v-model:current-rate="currentAnalysisGaiRate" :rate="analysisRates.gaiRate" :speed="100" color="#8B5CF6" size="80px" :stroke-width="10">
+                    <van-circle v-model:current-rate="currentAnalysisGaiRate" :rate="analysisRates.gaiRate" :speed="100"
+                                color="#8B5CF6" size="80px" :stroke-width="10">
                       <div class="circle-inner"><span class="circle-text-sm">{{ analysisData.gaiDone }}%</span></div>
                     </van-circle>
                     <span class="analysis-chart-label">人机交互任务</span>
@@ -188,12 +212,14 @@
           <div class="bottom-left">
             <div class="invite-btn-glow" :class="isInvitationValid ? 'glow-valid' : 'glow-invalid'">
               <button class="invite-code-btn" @click="openInviteModal">
-                <van-icon name="description"/> 邀请码
+                <van-icon name="description"/>
+                邀请码
               </button>
             </div>
           </div>
           <div class="bottom-right">
-            <button class="toggle-edit-btn" :class="{ 'is-editing': isEditMode }" @click="toggleEditMode" :disabled="isSaving">
+            <button class="toggle-edit-btn" :class="{ 'is-editing': isEditMode }" @click="toggleEditMode"
+                    :disabled="isSaving">
               {{ isSaving ? '保存中...' : (isEditMode ? '完成编辑' : '编辑') }}
             </button>
           </div>
@@ -215,14 +241,20 @@
             </div>
             <div class="detail-charts-row">
               <div class="chart-box">
-                <van-circle v-model:current-rate="currentCompRate" :rate="detailData.completionRate" :speed="100" color="#4A90E2" size="90px" :stroke-width="15">
+                <van-circle v-model:current-rate="currentCompRate" :rate="detailData.completionRate" :speed="100"
+                            color="#4A90E2" size="90px" :stroke-width="15">
                   <div class="circle-inner"><span class="circle-text">{{ currentCompRate.toFixed(0) }}%</span></div>
                 </van-circle>
-                <span class="chart-label">{{ detailType === 'section' ? '学习人数/全部人数' : '完成人数/全部人数' }}</span>
+                <span class="chart-label">{{
+                    detailType === 'section' ? '学习人数/全部人数' : '完成人数/全部人数'
+                  }}</span>
               </div>
               <div class="chart-box">
-                <van-circle v-model:current-rate="currentScoreRate" :rate="detailData.scoreRate" :speed="100" color="#10B981" size="90px" :stroke-width="15">
-                  <div class="circle-inner"><span class="circle-text">{{ detailType === 'section' ? (currentScoreRate / 20).toFixed(1) : currentScoreRate.toFixed(0) }}</span></div>
+                <van-circle v-model:current-rate="currentScoreRate" :rate="detailData.scoreRate" :speed="100"
+                            color="#10B981" size="90px" :stroke-width="15">
+                  <div class="circle-inner"><span class="circle-text">{{
+                      detailType === 'section' ? (currentScoreRate / 20).toFixed(1) : currentScoreRate.toFixed(0)
+                    }}</span></div>
                 </van-circle>
                 <span class="chart-label">{{ detailType === 'section' ? '实际学习效果/5分' : '平均得分/100分' }}</span>
               </div>
@@ -230,17 +262,21 @@
             <div class="detail-lists-row">
               <div class="list-col left-list blur-vertical">
                 <h4>{{ detailType === 'section' ? '已学习学生' : '已完成学生' }}</h4>
-                <template v-for="group in groupStudentsByClass(detailData.completedStudents, 'name')" :key="group.class_name">
+                <template v-for="group in groupStudentsByClass(detailData.completedStudents, 'name')"
+                          :key="group.class_name">
                   <div class="class-group-card">
                     <div class="class-group-header" @click="toggleClassExpand('completed-', group.class_name)">
                       <span class="class-group-title">{{ group.class_name }}</span>
-                      <van-icon name="arrow" class="class-arrow" :class="{ 'is-expanded': isClassExpanded('completed-', group.class_name) }"/>
+                      <van-icon name="arrow" class="class-arrow"
+                                :class="{ 'is-expanded': isClassExpanded('completed-', group.class_name) }"/>
                     </div>
                     <transition name="class-slide">
                       <div class="class-group-body-inner" v-if="isClassExpanded('completed-', group.class_name)">
                         <div class="list-row" v-for="(stu, idx) in group.students" :key="idx">
                           <span class="stu-name">{{ stu.name }}</span>
-                          <span class="stu-score">{{ detailType === 'section' ? '学习质量：' : '任务得分：' }}{{ stu.score }}</span>
+                          <span class="stu-score">{{ detailType === 'section' ? '学习质量：' : '任务得分：' }}{{
+                              stu.score
+                            }}</span>
                         </div>
                       </div>
                     </transition>
@@ -249,11 +285,13 @@
               </div>
               <div class="list-col right-list blur-vertical">
                 <h4>{{ detailType === 'section' ? '未学习学生' : '未完成学生' }}</h4>
-                <template v-for="group in groupStudentsByClass(detailData.uncompletedStudents, 'name')" :key="group.class_name">
+                <template v-for="group in groupStudentsByClass(detailData.uncompletedStudents, 'name')"
+                          :key="group.class_name">
                   <div class="class-group-card">
                     <div class="class-group-header" @click="toggleClassExpand('uncompleted-', group.class_name)">
                       <span class="class-group-title">{{ group.class_name }}</span>
-                      <van-icon name="arrow" class="class-arrow" :class="{ 'is-expanded': isClassExpanded('uncompleted-', group.class_name) }"/>
+                      <van-icon name="arrow" class="class-arrow"
+                                :class="{ 'is-expanded': isClassExpanded('uncompleted-', group.class_name) }"/>
                     </div>
                     <transition name="class-slide">
                       <div class="class-group-body-inner" v-if="isClassExpanded('uncompleted-', group.class_name)">
@@ -273,7 +311,8 @@
 
       <!-- 2. 人机交互任务预览 -->
       <transition name="fade">
-        <div v-if="showGaiTaskDetailPanel && !isEditMode" class="modal-overlay glass-overlay" @click.self="showGaiTaskDetailPanel = false">
+        <div v-if="showGaiTaskDetailPanel && !isEditMode" class="modal-overlay glass-overlay"
+             @click.self="showGaiTaskDetailPanel = false">
           <div class="gai-detail-panel">
             <div class="gai-detail-header">
               <h3>人机交互任务：{{ currentGaiTask?.analysis_task_title }}</h3>
@@ -287,11 +326,14 @@
                   <div class="class-group-card">
                     <div class="class-group-header" @click="toggleClassExpand('gai-', group.class_name)">
                       <span class="class-group-title">{{ group.class_name }}</span>
-                      <van-icon name="arrow" class="class-arrow" :class="{ 'is-expanded': isClassExpanded('gai-', group.class_name) }"/>
+                      <van-icon name="arrow" class="class-arrow"
+                                :class="{ 'is-expanded': isClassExpanded('gai-', group.class_name) }"/>
                     </div>
                     <transition name="class-slide">
                       <div class="class-group-body-inner" v-if="isClassExpanded('gai-', group.class_name)">
-                        <div v-for="stu in group.students" :key="stu.id" class="analysis-stu-item" :class="{ active: selectedGaiStudentId === stu.id,'student-not-completed': !stu.is_completed }" @click="selectGaiStudent(stu.id)">
+                        <div v-for="stu in group.students" :key="stu.id" class="analysis-stu-item"
+                             :class="{ active: selectedGaiStudentId === stu.id,'student-not-completed': !stu.is_completed }"
+                             @click="selectGaiStudent(stu.id)">
                           {{ stu.name }}
                         </div>
                       </div>
@@ -308,7 +350,8 @@
               </div>
               <div class="gai-col-chat blur-vertical">
                 <h4>对话记录留存</h4>
-                <div v-for="msg in currentGaiTask?.chatHistory" :key="msg.id" :class="['message-wrapper', msg.role === 'assistant' ? 'left' : 'right']">
+                <div v-for="msg in currentGaiTask?.chatHistory" :key="msg.id"
+                     :class="['message-wrapper', msg.role === 'assistant' ? 'left' : 'right']">
                   <div class="message-bubble" v-html="renderMd(msg.content)"></div>
                 </div>
               </div>
@@ -316,20 +359,49 @@
           </div>
         </div>
       </transition>
-
       <!-- 3. 人机交互任务编辑弹窗 -->
       <transition name="modal-fade">
         <div v-if="showGaiTaskModal" class="modal-overlay" @click.self="closeGaiTaskModal">
-          <div class="subtask-modal-content gai-form-content">
-            <h3>{{ currentGaiTask ? '编辑人机交互任务' : '发布人机交互任务' }}</h3>
-            <input type="text" class="custom-input" v-model="gaiTaskForm.title" placeholder="请输入“人机交互任务”标题"/>
-            <textarea class="custom-textarea" v-model="gaiTaskForm.desc" placeholder="任务描述（课程学生可见，指导学生如何与AI交互）"></textarea>
-            <textarea class="custom-textarea" v-model="gaiTaskForm.analysisReq" placeholder="对话分析需求（告诉后台系统如何分析学生的对话记录）"></textarea>
-            <input type="text" class="custom-input" v-model="gaiTaskForm.scoreRule" placeholder="评分标准（如：探索深度40%，逻辑性60%）"/>
-            <div class="deadline-trigger full-width" @click="showGaiTimePicker = true">
-              <van-icon name="clock-o" size="16"/>
-              <span>{{ gaiTaskForm.deadline ? formatDisplayTime(gaiTaskForm.deadline) : '设置截止时间 (必填)' }}</span>
+          <div class="gai-task-modal-content">
+            <!-- 头部：标题 + 截止时间 -->
+            <div class="gai-task-modal-header">
+              <h3>{{ currentGaiTask ? '编辑人机交互任务' : '发布人机交互任务' }}</h3>
+              <div class="deadline-trigger" @click="showGaiTimePicker = true">
+                <van-icon name="clock-o" size="16"/>
+                <span>{{ gaiTaskForm.deadline ? formatDisplayTime(gaiTaskForm.deadline) : '设置截止时间 (必填)' }}</span>
+              </div>
             </div>
+
+            <!-- 内容滚动区 -->
+            <div class="gai-task-modal-body">
+              <div class="gai-form-item">
+                <label class="gai-form-item-label">标题</label>
+                <input type="text" class="custom-input" v-model="gaiTaskForm.title" placeholder="请输入标题"/>
+              </div>
+
+              <div class="gai-form-item gai-flex-item">
+                <label class="gai-form-item-label">任务描述</label>
+                <textarea class="custom-textarea" v-model="gaiTaskForm.desc" placeholder="课程学生可见，指导学生如何与AI交互"></textarea>
+              </div>
+
+              <div class="gai-form-item gai-flex-item">
+                <label class="gai-form-item-label">分析需求</label>
+                <textarea class="custom-textarea" v-model="gaiTaskForm.analysisReq" placeholder="告诉后台系统如何分析学生的对话记录"></textarea>
+              </div>
+
+              <div class="gai-form-item">
+                <label class="gai-form-item-label">评分</label>
+                <textarea class="custom-textarea" v-model="gaiTaskForm.scoreRule" placeholder="如：探索深度40%，逻辑性60%"></textarea>
+              </div>
+            </div>
+
+            <!-- 底部操作栏 -->
+            <div class="gai-task-modal-footer">
+              <button class="modal-btn btn-cancel" @click="closeGaiTaskModal">取消</button>
+              <button class="modal-btn btn-submit" @click="saveGaiTask">提交</button>
+            </div>
+
+            <!-- 时间选择器弹窗 -->
             <van-popup v-model:show="showGaiTimePicker" class="center-time-popup" position="center" :overlay="false" teleport="body" :z-index="3001">
               <div class="time-picker-wrapper" @wheel.prevent="handleTimePickerWheel">
                 <div class="time-picker-header">
@@ -340,31 +412,41 @@
                 <van-date-picker v-model="gaiTimePickerValue" :show-toolbar="false"/>
               </div>
             </van-popup>
-            <div class="modal-footer space-between">
-              <button class="modal-btn btn-cancel" @click="closeGaiTaskModal">取消</button>
-              <button class="modal-btn btn-submit" @click="saveGaiTask">提交</button>
-            </div>
           </div>
         </div>
       </transition>
+
 
       <!-- 4. 小节编辑/查看表单 -->
       <transition name="modal-fade">
         <div v-if="showSectionModal" class="modal-overlay" @click.self="showSectionModal = false">
           <div class="subtask-modal-content">
             <h3>{{ isSectionModalReadOnly ? '查看小节' : (currentSection ? '编辑小节' : '添加小节') }}</h3>
-            <input type="text" class="custom-input" :class="{'is-readonly': isSectionModalReadOnly}" v-model="sectionForm.title" placeholder="请输入小节名称" :readonly="isSectionModalReadOnly"/>
+            <input type="text" class="custom-input" :class="{'is-readonly': isSectionModalReadOnly}"
+                   v-model="sectionForm.title" placeholder="请输入小节名称" :readonly="isSectionModalReadOnly"/>
             <div class="type-selector" :class="{'is-readonly': isSectionModalReadOnly}">
-              <div class="type-btn" :class="{ active: sectionForm.type === 'video' }" @click="!isSectionModalReadOnly && (sectionForm.type = 'video')">视频 </div>
-              <div class="type-btn" :class="{ active: sectionForm.type === 'pdf' }" @click="!isSectionModalReadOnly && (sectionForm.type = 'pdf')"> PDF </div>
+              <div class="type-btn" :class="{ active: sectionForm.type === 'video' }"
+                   @click="!isSectionModalReadOnly && (sectionForm.type = 'video')">视频
+              </div>
+              <div class="type-btn" :class="{ active: sectionForm.type === 'pdf' }"
+                   @click="!isSectionModalReadOnly && (sectionForm.type = 'pdf')"> PDF
+              </div>
             </div>
-            <div class="upload-area" :class="[isSectionModalReadOnly ? 'is-readonly' : '', sectionFileError ? 'has-error' : '']" @click="simulateUpload">
-              <van-icon :name="sectionForm.fileUploaded ? 'success' : 'cloud-o'" size="24" :color="sectionForm.fileUploaded ? '#10B981' : '#4A90E2'"/>
-              <span>{{ sectionForm.fileUploaded ? '资料已就绪' : `点击上传 ${sectionForm.type === 'video' ? '视频' : 'PDF'} 资料` }}</span>
+            <div class="upload-area"
+                 :class="[isSectionModalReadOnly ? 'is-readonly' : '', sectionFileError ? 'has-error' : '']"
+                 @click="simulateUpload">
+              <van-icon :name="sectionForm.fileUploaded ? 'success' : 'cloud-o'" size="24"
+                        :color="sectionForm.fileUploaded ? '#10B981' : '#4A90E2'"/>
+              <span>{{
+                  sectionForm.fileUploaded ? '资料已就绪' : `点击上传 ${sectionForm.type === 'video' ? '视频' : 'PDF'} 资料`
+                }}</span>
             </div>
-            <input ref="fileInputRef" type="file" style="display: none;" :accept="sectionForm.type === 'video' ? 'video/*' : '.pdf'" @change="handleFileChange"/>
+            <input ref="fileInputRef" type="file" style="display: none;"
+                   :accept="sectionForm.type === 'video' ? 'video/*' : '.pdf'" @change="handleFileChange"/>
             <div class="error-msg" v-if="sectionFileError && !isSectionModalReadOnly">必须上传对应资料才可保存</div>
-            <textarea class="custom-textarea" :class="{'is-readonly': isSectionModalReadOnly}" v-model="sectionForm.description" placeholder="请输入学习内容介绍（选填）" :readonly="isSectionModalReadOnly"></textarea>
+            <textarea class="custom-textarea" :class="{'is-readonly': isSectionModalReadOnly}"
+                      v-model="sectionForm.description" placeholder="请输入学习内容介绍（选填）"
+                      :readonly="isSectionModalReadOnly"></textarea>
             <div class="modal-footer" v-if="!isSectionModalReadOnly">
               <button class="modal-btn btn-cancel" @click="showSectionModal = false">取消</button>
               <button class="modal-btn btn-submit" @click="saveSection">保存</button>
@@ -379,13 +461,15 @@
           <div class="task-modal-content">
             <div class="task-modal-header">
               <h3 style="white-space: nowrap;">{{ currentTask ? '编辑任务' : '创建任务' }}</h3>
-              <input type="text" class="custom-input title-input flex-1" v-model="taskForm.title" placeholder="请输入任务名称" style="margin: 0 16px;"/>
+              <input type="text" class="custom-input title-input flex-1" v-model="taskForm.title"
+                     placeholder="请输入任务名称" style="margin: 0 16px;"/>
               <div class="deadline-trigger" @click="showTaskTimePicker = true">
                 <van-icon name="clock-o" size="16"/>
                 <span>{{ taskForm.deadline ? formatDisplayTime(taskForm.deadline) : '设置截止时间' }}</span>
               </div>
             </div>
-            <van-popup v-model:show="showTaskTimePicker" class="center-time-popup" position="center" :overlay="false" teleport="body" :z-index="3001">
+            <van-popup v-model:show="showTaskTimePicker" class="center-time-popup" position="center" :overlay="false"
+                       teleport="body" :z-index="3001">
               <div class="time-picker-wrapper" @wheel.prevent="handleTimePickerWheel">
                 <div class="time-picker-header">
                   <span @click="clearTaskTime" class="tp-btn clear">清除</span>
@@ -396,47 +480,64 @@
               </div>
             </van-popup>
             <div class="task-modal-body blur-vertical">
-              <div v-if="isTaskDetailLoading" style="display: flex; justify-content: center; align-items: center; min-height: 200px;">
+              <div v-if="isTaskDetailLoading"
+                   style="display: flex; justify-content: center; align-items: center; min-height: 200px;">
                 <van-loading size="36px" vertical color="#1989fa">正在获取题目...</van-loading>
               </div>
               <template v-else>
-                <div v-for="(q, qIndex) in taskForm.questions" :key="q.id" class="question-edit-card">
-                  <div v-if="taskForm.questions.length > 1" class="action-btn-circle btn-danger q-delete-btn" @click="taskForm.questions.splice(qIndex, 1)">
+                <div v-for="(q, qIndex) in taskForm.questions" :key="q.id" class="question-edit-card"
+                     :id="'question-card-' + qIndex"
+                     :class="{ 'has-validation-error': q.hasError, 'shake-animation': q.isShaking }">
+                  <div v-if="taskForm.questions.length > 1" class="action-btn-circle btn-danger q-delete-btn"
+                       @click="taskForm.questions.splice(qIndex, 1)">
                     <van-icon name="minus" size="14"/>
                   </div>
                   <div class="q-card-inner">
                     <div class="q-type-sidebar">
-                      <div class="q-type-btn" :class="{ active: q.type === 'single' }" @click="q.type = 'single'">单选 </div>
-                      <div class="q-type-btn" :class="{ active: q.type === 'multiple' }" @click="q.type = 'multiple'"> 多选 </div>
-                      <div class="q-type-btn" :class="{ active: q.type === 'judge' }" @click="q.type = 'judge'">判断 </div>
-                      <div class="q-type-btn" :class="{ active: q.type === 'subjective' }" @click="q.type = 'subjective'">主观 </div>
+                      <div class="q-type-btn" :class="{ active: q.type === 'single' }" @click="q.type = 'single'">单选
+                      </div>
+                      <div class="q-type-btn" :class="{ active: q.type === 'multiple' }" @click="q.type = 'multiple'">
+                        多选
+                      </div>
+                      <div class="q-type-btn" :class="{ active: q.type === 'judge' }" @click="q.type = 'judge'">判断
+                      </div>
+                      <div class="q-type-btn" :class="{ active: q.type === 'subjective' }"
+                           @click="q.type = 'subjective'">主观
+                      </div>
                     </div>
                     <div class="q-content-editor">
-                      <textarea class="custom-textarea q-title-input" v-model="q.title" placeholder="请输入题目内容"></textarea>
+                      <textarea class="custom-textarea q-title-input" v-model="q.title"
+                                placeholder="请输入题目内容"></textarea>
                       <div v-if="q.type === 'single'" class="options-edit-list">
                         <div v-for="(opt, optIndex) in q.options" :key="opt.id" class="option-edit-row">
-                          <div class="mock-radio" :class="{ 'is-correct': q.correctAnswerId === opt.id }" @click="q.correctAnswerId = opt.id">
+                          <div class="mock-radio" :class="{ 'is-correct': q.correctAnswerId === opt.id }"
+                               @click="q.correctAnswerId = opt.id">
                             <van-icon v-if="q.correctAnswerId === opt.id" name="success" size="12"/>
                           </div>
-                          <input type="text" class="custom-input opt-input" v-model="opt.content" :placeholder="`选项 ${String.fromCharCode(65 + optIndex)} 内容`"/>
+                          <input type="text" class="custom-input opt-input" v-model="opt.content"
+                                 :placeholder="`选项 ${String.fromCharCode(65 + optIndex)} 内容`"/>
                         </div>
                       </div>
                       <div v-else-if="q.type === 'multiple'" class="options-edit-list">
                         <div v-for="(opt, optIndex) in q.options" :key="opt.id" class="option-edit-row">
-                          <div class="mock-checkbox" :class="{ 'is-correct': q.correctAnswerIds.includes(opt.id) }" @click="toggleCorrectAnswer(q, opt.id)">
+                          <div class="mock-checkbox" :class="{ 'is-correct': q.correctAnswerIds.includes(opt.id) }"
+                               @click="toggleCorrectAnswer(q, opt.id)">
                             <van-icon v-if="q.correctAnswerIds.includes(opt.id)" name="success" size="12"/>
                           </div>
-                          <input type="text" class="custom-input opt-input" v-model="opt.content" :placeholder="`选项 ${String.fromCharCode(65 + optIndex)} 内容`"/>
+                          <input type="text" class="custom-input opt-input" v-model="opt.content"
+                                 :placeholder="`选项 ${String.fromCharCode(65 + optIndex)} 内容`"/>
                         </div>
                       </div>
                       <div v-else-if="q.type === 'judge'" class="judge-edit-row">
-                        <div class="judge-mock-btn" :class="{ 'is-correct': q.correctAnswerId === 'true' }" @click="q.correctAnswerId = 'true'">
+                        <div class="judge-mock-btn" :class="{ 'is-correct': q.correctAnswerId === 'true' }"
+                             @click="q.correctAnswerId = 'true'">
                           <div class="mock-radio" :class="{ 'is-correct': q.correctAnswerId === 'true' }">
                             <van-icon v-if="q.correctAnswerId === 'true'" name="success" size="12"/>
                           </div>
                           正确
                         </div>
-                        <div class="judge-mock-btn" :class="{ 'is-correct': q.correctAnswerId === 'false' }" @click="q.correctAnswerId = 'false'">
+                        <div class="judge-mock-btn" :class="{ 'is-correct': q.correctAnswerId === 'false' }"
+                             @click="q.correctAnswerId = 'false'">
                           <div class="mock-radio" :class="{ 'is-correct': q.correctAnswerId === 'false' }">
                             <van-icon v-if="q.correctAnswerId === 'false'" name="success" size="12"/>
                           </div>
@@ -444,7 +545,8 @@
                         </div>
                       </div>
                       <div v-else-if="q.type === 'subjective'" class="subjective-edit-area">
-                        <textarea class="custom-textarea refer-answer-input" v-model="q.referAnswer" placeholder="请输入参考答案（选填）"></textarea>
+                        <textarea class="custom-textarea refer-answer-input" v-model="q.referAnswer"
+                                  placeholder="请输入参考答案（选填）"></textarea>
                       </div>
                     </div>
                   </div>
@@ -472,7 +574,8 @@
             </div>
             <div class="invite-code-display">{{ inviteCode }}</div>
             <div class="invite-switch-section">
-              <div class="invite-switch" :class="isInvitationValid ? 'switch-valid' : 'switch-invalid'" @click="toggleInvitationValid">
+              <div class="invite-switch" :class="isInvitationValid ? 'switch-valid' : 'switch-invalid'"
+                   @click="toggleInvitationValid">
                 <div class="switch-slider" :class="{ 'slide-right': !isInvitationValid }">
                   <span v-if="isInvitationValid" class="slider-text text-green">有效</span>
                   <span v-else class="slider-text text-red">无效</span>
@@ -492,7 +595,7 @@
 
 
 <script setup>
-import {onMounted, onUnmounted, reactive, ref} from 'vue'
+import {onMounted, onUnmounted, reactive, ref, nextTick} from 'vue'
 import {useRoute, useRouter} from 'vue-router'
 import {showConfirmDialog, showToast} from 'vant'
 import AppHeader from '@/components/AppHeader.vue'
@@ -676,7 +779,10 @@ const toggleEditMode = async () => {
       isSaving.value = true
       const pendingKeys = Object.keys(pendingFiles)
       if (pendingKeys.length > 0) {
-        const uploadPromises = pendingKeys.map(key => upload_resource(pendingFiles[key]).then(res => ({key, path: res.data.path})))
+        const uploadPromises = pendingKeys.map(key => upload_resource(pendingFiles[key]).then(res => ({
+          key,
+          path: res.data.path
+        })))
         const results = await Promise.all(uploadPromises)
         results.forEach(r => {
           for (const ch of chapterList.value) {
@@ -967,7 +1073,9 @@ const createBlankQuestion = () => {
     }, {id: `opt_${ts}_3`, content: ''}],
     correctAnswerId: '',
     correctAnswerIds: [],
-    referAnswer: ''
+    referAnswer: '',
+    hasError: false,
+    isShaking: false
   }
 }
 
@@ -999,7 +1107,9 @@ const openTaskModal = async (task = null) => {
             options: q.options.map(opt => ({id: opt.id, content: opt.content})),
             correctAnswerId: '',
             correctAnswerIds: [],
-            referAnswer: ''
+            referAnswer: '',
+            hasError: false,
+            isShaking: false
           }
           if (q.type === 'single') baseQuestion.correctAnswerId = a.correct_answer[0]
           if (q.type === 'multiple') baseQuestion.correctAnswerIds = a.correct_answer
@@ -1035,30 +1145,102 @@ const toggleCorrectAnswer = (q, optId) => {
   else q.correctAnswerIds.push(optId)
 }
 
+const scrollToQuestion = async (index) => {
+  taskForm.questions[index].isShaking = true
+  setTimeout(() => {
+    taskForm.questions[index].isShaking = false
+  }, 600)
+
+  await nextTick()
+  const element = document.getElementById(`question-card-${index}`)
+  if (element) {
+    element.scrollIntoView({behavior: 'smooth', block: 'center'})
+  }
+}
+
 const saveTask = async () => {
   if (!taskForm.title) return showToast({message: '请输入任务名称', type: 'fail'})
   if (!taskForm.deadline) return showToast({message: '请设置截止时间', type: 'fail'})
-  for (let i = 0; i < taskForm.questions.length; i++) {
-    const q = taskForm.questions[i]
-    if (!q.title.trim()) return showToast({message: `第 ${i + 1} 题的题目内容不能为空`, type: 'fail'})
+
+  // 每次提交前重置所有题目的错误状态
+  taskForm.questions.forEach(q => {
+    q.hasError = false
+    q.isShaking = false
+  })
+
+  let errorCount = 0
+  let firstErrorIndex = -1
+
+  // === 优先级 1：检查题目内容 ===
+  taskForm.questions.forEach((q, i) => {
+    if (!q.title.trim()) {
+      q.hasError = true
+      errorCount++
+      if (firstErrorIndex === -1) firstErrorIndex = i
+    }
+  })
+  if (errorCount > 0) {
+    showToast({message: `题目内容不能为空\n有${errorCount}个题目内容为空`, type: 'fail', duration: 3000,className: 'validation-toast'})
+    scrollToQuestion(firstErrorIndex)
+    return
+  }
+
+  // === 优先级 2：检查选项内容（仅单选和多选） ===
+  errorCount = 0
+  firstErrorIndex = -1
+  taskForm.questions.forEach((q, i) => {
     if (q.type === 'single' || q.type === 'multiple') {
-      for (let j = 0; j < q.options.length; j++) {
-        if (!q.options[j].content.trim()) return showToast({
-          message: `第 ${i + 1} 题的选项${String.fromCharCode(65 + j)} 不能为空`,
-          type: 'fail'
-        })
+      const hasOptionError = q.options.some(opt => !opt.content.trim())
+      if (hasOptionError) {
+        q.hasError = true
+        errorCount++
+        if (firstErrorIndex === -1) firstErrorIndex = i
       }
     }
+  })
+  if (errorCount > 0) {
+    showToast({message: `选项内容不能为空\n有${errorCount}个题目的选项有空`, type: 'fail', duration: 3000,className: 'validation-toast'})
+    scrollToQuestion(firstErrorIndex)
+    return
   }
+
+  // === 优先级 3：检查答案指定情况 ===
+  errorCount = 0
+  firstErrorIndex = -1
+  taskForm.questions.forEach((q, i) => {
+    let hasAnswerError = false
+    if (q.type === 'single') {
+      if (!q.correctAnswerId) hasAnswerError = true
+    } else if (q.type === 'multiple') {
+      if (q.correctAnswerIds.length === 0) hasAnswerError = true
+    } else if (q.type === 'judge') {
+      if (!q.correctAnswerId) hasAnswerError = true
+    } else if (q.type === 'subjective') {
+      if (!q.referAnswer.trim()) hasAnswerError = true
+    }
+
+    if (hasAnswerError) {
+      q.hasError = true
+      errorCount++
+      if (firstErrorIndex === -1) firstErrorIndex = i
+    }
+  })
+  if (errorCount > 0) {
+    showToast({message: `需要指定题目的正确答案\n有${errorCount}个题目的答案未指定`, type: 'fail', duration: 3000,className: 'validation-toast'})
+    scrollToQuestion(firstErrorIndex)
+    return
+  }
+
+  // 以下为原有的保存逻辑
   const quiz = taskForm.questions.map(q => ({
     question_id: q.id,
     type: q.type,
     title: q.title,
     options: (q.type === 'single' || q.type === 'multiple') ? q.options.map(opt => ({
-      id: opt.id,
-      content: opt.content
+      id: opt.id, content: opt.content
     })) : []
   }))
+
   const answer = taskForm.questions.map(q => {
     if (q.type === 'single') return {question_id: q.id, type: q.type, correct_answer: [q.correctAnswerId]}
     if (q.type === 'multiple') return {question_id: q.id, type: q.type, correct_answer: [...q.correctAnswerIds]}
@@ -1066,6 +1248,7 @@ const saveTask = async () => {
     if (q.type === 'subjective') return {question_id: q.id, type: q.type, correct_answer: q.referAnswer}
     return {question_id: q.id, type: q.type, correct_answer: []}
   })
+
   const payload = {task_title: taskForm.title, quiz, answer, deadline: taskForm.deadline}
   let resTask
   if (currentTask.value) {
@@ -1250,7 +1433,11 @@ const openDetailPanel = async (type, title, targetId, chapterTitle = '') => {
   const avgScore = validScores.length > 0 ? validScores.reduce((sum, s) => sum + s, 0) / validScores.length : 0
   detailData.completionRate = compRate
   detailData.scoreRate = avgScore
-  detailData.completedStudents = completedRecords.map(r => ({name: r.student_name, score: r.score.toFixed(1), class_name: r.class_name}))
+  detailData.completedStudents = completedRecords.map(r => ({
+    name: r.student_name,
+    score: r.score.toFixed(1),
+    class_name: r.class_name
+  }))
   detailData.uncompletedStudents = uncompletedRecords.map(r => ({name: r.student_name, class_name: r.class_name}))
 }
 
@@ -1358,7 +1545,7 @@ const groupStudentsByClass = (students, nameKey = 'name') => {
     }
     groupMap.get(className).push(stu)
   })
-  return Array.from(groupMap, ([class_name, students]) => ({ class_name, students }))
+  return Array.from(groupMap, ([class_name, students]) => ({class_name, students}))
 }
 
 /**
@@ -1486,5 +1673,13 @@ onUnmounted(() => {
   if (countdownTimer) clearInterval(countdownTimer)
 })
 </script>
+<style>
+.validation-toast {
+  width: max-content !important;
+  min-width: unset !important;
+  max-width: 90vw !important;
+  text-align: center !important;
+}
+</style>
 
 <style scoped src="../../styles/views/teacher/CourseTeacher.css"></style>

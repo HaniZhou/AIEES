@@ -305,24 +305,27 @@
   transform: translateY(-8px);
 }
 
-/* 展开时，自适应内容高度 */
+/* 展开时，给予更大的最大高度 */
 .gai-task-detail-accordion.is-expanded {
-  max-height: 500px; /* 给予足够安全的最大值防止被截断 */
+  max-height: 80vh; /* 从 500px 改为 80vh，适应更长内容 */
   opacity: 1;
   transform: translateY(0);
 }
 
-/* 修改：取消原固定的 70vh 高度，改为自适应，撑起手风琴内部空间 */
+
 .gai-detail-inner {
-  height: auto;
-  min-height: 100px;
+  max-height: calc(80vh - 40px);
   display: flex;
   flex-direction: column;
   padding: 16px 20px 20px 20px;
+  overflow: hidden;
 }
 
 /* 1. 描述文本栏 */
 .gai-desc-bar {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
   background: #F0F6FF;
   border-left: 4px solid #4A90E2;
   padding: 12px 16px;
@@ -331,7 +334,6 @@
   color: #333;
   margin-bottom: 16px;
   line-height: 1.5;
-  flex-shrink: 0;
 }
 
 .gai-desc-bar strong {
@@ -478,11 +480,11 @@
   50% { opacity: 0; }
 }
 
-/* 3. 底部提交按钮栏（更新逻辑） */
+/* 3. 底部提交按钮栏*/
 .gai-submit-bar {
   display: flex;
   justify-content: flex-end;
-  margin-top: 12px;
+  margin-top: auto;
   flex-shrink: 0;
 }
 
