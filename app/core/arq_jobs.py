@@ -3,9 +3,9 @@ import logging
 import re
 import json
 from arq import create_pool
+from app.core.AI_tools import generate_gai_analysis_text, logger as ai_logger
 from arq.connections import RedisSettings
 from arq.cron import cron
-from app.core.tools import generate_gai_analysis_text, logger as ai_logger
 from app.crud.db import (
     async_session_factory,
     db_get_task_raw_for_grading,

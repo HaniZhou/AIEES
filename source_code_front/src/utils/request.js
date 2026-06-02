@@ -42,11 +42,9 @@ request.interceptors.response.use(
                     // 延迟跳转，让用户看到提示
                     setTimeout(() => {
                         if (window.location.pathname !== '/') {
-                            showToast('登录已过期，请重新登录');
                             window.location.href = '/';
                         }
                     }, 2000);
-                    showToast('用户或者密码错误');
                     break;
                 case 403:
                     showToast('没有权限进行此操作');

@@ -20,15 +20,7 @@ from app.model.schema.course import CourseInfo, ChapterBatchPayload, CourseDetai
 from app.model.schema.schema import RoleType, UserInDB, UserPublish
 from app.model.schema.classes import ClassRead
 from app.Config import SecretConfig
-
-
-# 纯业务异常定义
-class AppBusinessException(Exception):
-    """业务阻断异常：仅用于表达业务规则拒绝(404/403/400)。严禁用于表达系统故障。"""
-    def __init__(self, code: int, message: str, log_module: str = "db"):
-        self.code = code
-        self.message = message
-        self.log_module = log_module
+from app.core.exceptions import AppBusinessException
 
 
 #  初始化数据 

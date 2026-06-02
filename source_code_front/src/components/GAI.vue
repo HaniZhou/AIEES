@@ -2,7 +2,6 @@
   <div class="agi-container" :class="{ 'is-task-mode': isInTaskMode }">
     <!-- 任务模式遮罩层 -->
     <div v-if="isOpen && isInTaskMode" class="agi-overlay" @click="togglePanel(false)"></div>
-
     <div v-show="!hideTrigger" class="agi-trigger" :class="{ 'is-open': isOpen }" @click="togglePanel">
       <svg class="trigger-icon" viewBox="0 0 24 24" width="24" height="24" fill="none" xmlns="http://www.w3.org/2000/svg">
         <path d="M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" fill="white"/>
@@ -26,7 +25,7 @@
             </template>
           </div>
           <div v-if="!isInTaskMode" class="header-actions">
-            <button class="header-action-btn" @click="handleClearHistory" aria-label="清空对话">
+            <button class="header-action-btn" @click="clearCurrentChat" aria-label="清空对话">
               <van-icon name="delete-o" size="18" color="#999"/>
             </button>
           </div>
@@ -73,10 +72,48 @@
           </div>
         </div>
         <div class="agi-footer">
-          <div class="input-container">
-            <van-field v-model="inputText" type="textarea" :autosize="{ maxHeight: 200, minHeight: 44 }" placeholder="询问关于实验、公式或科学现象的问题..." class="input-box" @keydown.enter="handleEnterKey" aria-label="输入问题"/>
-            <button class="send-btn" :disabled="!inputText.trim() || isProcessing" @click="sendMessage" :aria-label="isProcessing ? '正在生成中' : '发送消息'" :aria-disabled="isProcessing">
-              <van-icon name="guide-o"/>
+          <div class="input-container" :class="{ 'is-recording': isRecording, 'is-transcribing': isTranscribing }">
+            <div class="voice-ripple-bg" v-if="isRecording">
+              <span class="ripple"></span><span class="ripple"></span><span class="ripple"></span>
+            </div>
+            <van-field
+              v-model="inputText"
+              type="textarea"
+              :autosize="{ maxHeight: 200, minHeight: 44 }"
+              :readonly="isTranscribing"
+              placeholder="询问关于实验、公式或科学现象的问题..."
+              class="input-box"
+              :class="{'is-streaming-input': isTranscribing}"
+              @keydown.enter="handleEnterKey"
+              aria-label="输入问题"
+            />
+            <button
+              class="action-btn"
+              :class="actionState"
+              @click="handleActionClick"
+              @mousedown="handlePointerDown"
+              @mouseup="handlePointerUp"
+              @mouseleave="handlePointerCancel"
+              @touchstart.prevent="handlePointerDown"
+              @touchend.prevent="handlePointerUp"
+              @touchmove="handleTouchMove"
+              :disabled="isProcessing || isTranscribing"
+            >
+              <div v-if="actionState === 'mic'" class="btn-content mic-icon">
+                <svg viewBox="0 0 24 24" width="22" height="22" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z" fill="currentColor"/>
+                  <path d="M19 10v2a7 7 0 0 1-14 0v-2" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                  <line x1="12" y1="19" x2="12" y2="23" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                  <line x1="8" y1="23" x2="16" y2="23" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                </svg>
+                <span class="recording-dot"></span>
+              </div>
+              <div v-else-if="actionState === 'recording'" class="btn-content voice-bars">
+                <span class="bar b1"></span><span class="bar b2"></span><span class="bar b3"></span><span class="bar b4"></span><span class="bar b5"></span>
+              </div>
+              <div v-else-if="actionState === 'send'" class="btn-content send-icon">
+                <van-icon name="guide-o"/>
+              </div>
             </button>
           </div>
           <div class="ai-disclaimer">内容由AI生成，请仔细甄别</div>
@@ -85,11 +122,10 @@
     </transition>
   </div>
 </template>
-
 <script setup>
 import {ref, computed, onMounted, nextTick, reactive, onBeforeUnmount, watch} from 'vue'
 import {showToast, showConfirmDialog} from 'vant'
-import {chatStream} from '@/api/services'
+import {chatStream, asrStream} from '@/api/services'
 import {useClipboard} from '@vueuse/core'
 import MarkdownIt from 'markdown-it'
 import texmath from 'markdown-it-texmath'
@@ -101,6 +137,7 @@ import relativeTime from 'dayjs/plugin/relativeTime'
 import 'dayjs/locale/zh-cn'
 import 'prismjs/themes/prism.css'
 import 'katex/dist/katex.min.css'
+import Mp3EncodeWorker from '../utils/mp3EncodeWorker.js?worker'
 import 'markdown-it-texmath/css/texmath.css'
 dayjs.extend(relativeTime)
 dayjs.locale('zh-cn')
@@ -141,8 +178,7 @@ const md = new MarkdownIt({
     if (lang && Prism.languages[lang]) {
       try {
         return '<pre class="language-' + lang + '"><code>' + Prism.highlight(str, Prism.languages[lang], lang) + '</code></pre>'
-      } catch (__) {
-      }
+      } catch (__) {}
     }
     return '<pre class="language-none"><code>' + md.utils.escapeHtml(str) + '</code></pre>'
   }
@@ -160,7 +196,11 @@ const injectCodeBlockUI = (htmlString) => {
 const renderMarkdown = (rawContent) => {
   let dirtyHtml = md.render(rawContent)
   dirtyHtml = injectCodeBlockUI(dirtyHtml)
-  return DOMPurify.sanitize(dirtyHtml, {ADD_TAGS: ['iframe'], ADD_ATTR: ['allow', 'allowfullscreen', 'frameborder', 'scrolling', 'class', 'style', 'data-copy-code'], USE_PROFILES: {html: true, mathMl: true}})
+  return DOMPurify.sanitize(dirtyHtml, {
+    ADD_TAGS: ['iframe'],
+    ADD_ATTR: ['allow', 'allowfullscreen', 'frameborder', 'scrolling', 'class', 'style', 'data-copy-code'],
+    USE_PROFILES: {html: true, mathMl: true}
+  })
 }
 const renderStreamingContent = (rawContent) => {
   if (isBlockUnclosed(rawContent)) {
@@ -174,7 +214,7 @@ const handleBodyClick = (e) => {
     const wrapper = copyBtn.closest('.code-block-wrapper')
     const codeEl = wrapper?.querySelector('code')
     if (codeEl) {
-      copy(codeEl.textContent);
+      copy(codeEl.textContent)
       showToast({message: '已复制', position: 'bottom'})
     }
   }
@@ -195,9 +235,7 @@ const scrollToBottom = async () => {
 }
 watch(isOpen, (newVal) => {
   if (newVal) {
-    nextTick(() => {
-      scrollToBottom()
-    })
+    nextTick(() => { scrollToBottom() })
   }
 })
 const handleScroll = () => {
@@ -234,8 +272,8 @@ const loadHistory = () => {
   }
 }
 const handleEnterKey = (e) => {
-  if (e.shiftKey) return;
-  e.preventDefault();
+  if (e.shiftKey) return
+  e.preventDefault()
   sendMessage()
 }
 const handleStreamResponse = async (messagesPayload, userMsg, aiMsg, targetArray) => {
@@ -244,9 +282,11 @@ const handleStreamResponse = async (messagesPayload, userMsg, aiMsg, targetArray
   }
   isProcessing.value = true
   if (userMsg) userMsg.status = 'sending'
+
   let isMsgPushed = false
   abortController.value = new AbortController()
   const finalUrl = (isInTaskMode.value && taskContext.apiUrl) ? taskContext.apiUrl : `/services/chat/stream/${props.roleSuffix}`
+
   let renderBuffer = ''
   let flushTimer = null
   const startFlush = () => {
@@ -289,8 +329,8 @@ const handleStreamResponse = async (messagesPayload, userMsg, aiMsg, targetArray
       },
       onDone: () => {
         stopFlush()
-        aiMsg.status = 'done';
-        isProcessing.value = false;
+        aiMsg.status = 'done'
+        isProcessing.value = false
         saveHistory()
       },
       onError: (msg) => {
@@ -311,12 +351,24 @@ const sendMessage = async (eventOrText) => {
   const text = isProgrammatic ? eventOrText : inputText.value.trim()
   if (!text || isProcessing.value) return
   const targetArray = isInTaskMode.value ? taskMessages.value : allMessages.value
-  const userMsg = reactive({id: Date.now().toString(), role: 'user', content: text, timestamp: Date.now(), status: 'done'})
+  const userMsg = reactive({
+    id: Date.now().toString(),
+    role: 'user',
+    content: text,
+    timestamp: Date.now(),
+    status: 'done'
+  })
   targetArray.push(userMsg)
   if (!isProgrammatic) inputText.value = ''
-  saveHistory();
+  saveHistory()
   scrollToBottom()
-  const aiMsg = reactive({id: (Date.now() + 1).toString(), role: 'assistant', content: '', timestamp: Date.now(), status: 'streaming'})
+  const aiMsg = reactive({
+    id: (Date.now() + 1).toString(),
+    role: 'assistant',
+    content: '',
+    timestamp: Date.now(),
+    status: 'streaming'
+  })
   let messagesPayload = targetArray.map((m) => ({role: m.role, content: m.content}))
   if (isInTaskMode.value && systemPromptRef.value) {
     messagesPayload.unshift({role: 'user', content: systemPromptRef.value})
@@ -330,7 +382,13 @@ const retryMessage = async (userMsg) => {
     const nextMsg = targetArray[userIndex + 1]
     if (nextMsg.role === 'assistant') targetArray.splice(userIndex + 1, 1)
   }
-  const aiMsg = reactive({id: (Date.now() + 1).toString(), role: 'assistant', content: '', timestamp: Date.now(), status: 'streaming'})
+  const aiMsg = reactive({
+    id: (Date.now() + 1).toString(),
+    role: 'assistant',
+    content: '',
+    timestamp: Date.now(),
+    status: 'streaming'
+  })
   let messagesPayload = targetArray.map((m) => ({role: m.role, content: m.content}))
   if (isInTaskMode.value && systemPromptRef.value) {
     messagesPayload.unshift({role: 'user', content: systemPromptRef.value})
@@ -343,19 +401,25 @@ const sendSilentMessage = async (text) => {
   let messagesPayload = allMessages.value.map((m) => ({role: m.role, content: m.content}))
   if (messagesPayload.length === 0) messagesPayload.push({role: 'user', content: '开始'})
   messagesPayload.push({role: 'user', content: text})
-  const aiMsg = reactive({id: (Date.now() + 1).toString(), role: 'assistant', content: '', timestamp: Date.now(), status: 'streaming'})
+  const aiMsg = reactive({
+    id: (Date.now() + 1).toString(),
+    role: 'assistant',
+    content: '',
+    timestamp: Date.now(),
+    status: 'streaming'
+  })
   await handleStreamResponse(messagesPayload, null, aiMsg, allMessages.value)
 }
 const handleClearHistory = async () => {
   try {
-    await showConfirmDialog({
-      title: '确认清空',
-      message: '是否清空当前对话记录？',
-    })
+    await showConfirmDialog({ title: '确认清空', message: '是否清空当前对话记录？' })
     allMessages.value = []
     localStorage.removeItem('gai_chat_history')
-  } catch (e) {
-  }
+  } catch (e) {}
+}
+const clearCurrentChat = () => {
+  if (isInTaskMode.value) taskMessages.value = []
+  else allMessages.value = []
 }
 const startTaskMode = async ({courseName, taskTitle, taskDesc, promptText, courseId, taskId, apiUrl}) => {
   Object.assign(taskContext, {courseName, taskTitle, taskDesc, courseId, taskId, apiUrl})
@@ -368,7 +432,13 @@ const startTaskMode = async ({courseName, taskTitle, taskDesc, promptText, cours
     {role: 'user', content: promptText},
     {role: 'user', content: '开始'}
   ]
-  const aiMsg = reactive({id: (Date.now() + 1).toString(), role: 'assistant', content: '', timestamp: Date.now(), status: 'streaming'})
+  const aiMsg = reactive({
+    id: (Date.now() + 1).toString(),
+    role: 'assistant',
+    content: '',
+    timestamp: Date.now(),
+    status: 'streaming'
+  })
   await handleStreamResponse(initPayload, null, aiMsg, taskMessages.value)
 }
 const handleSubmitTask = () => {
@@ -390,11 +460,248 @@ const exitTaskMode = () => {
   isProcessing.value = false
   inputText.value = ''
 }
+// ==========================================
+// === 语音输入与录音状态管理 (修复版) ===
+// ==========================================
+const isRecording = ref(false)
+const isTranscribing = ref(false)
+const isRecordingCancelled = ref(false)
+const touchStartPos = reactive({x: 0, y: 0})
+// 录音相关上下文
+let audioContext = null
+let mediaStream = null
+let recorderNode = null
+let mp3Worker = null
+let maxRecordTimer = null
+let asrAbortController = null
+const actionState = computed(() => {
+  if (isRecording.value) return 'recording'
+  if (inputText.value.trim()) return 'send'
+  return 'mic'
+})
+const RECORDER_WORKLET_CODE = `
+class RecorderProcessor extends AudioWorkletProcessor {
+  constructor() {
+    super();
+    this._isRecording = false;
+    // 必须在构造函数中监听 port 消息
+    this.port.onmessage = (event) => {
+      if (event.data.type === 'start') {
+        this._isRecording = true;
+      } else if (event.data.type === 'stop') {
+        this._isRecording = false;
+      }
+    };
+  }
+  process(inputs) {
+    const input = inputs[0][0];
+    if (!this._isRecording || !input || input.length === 0) {
+      return true;
+    }
+    const samples = new Int16Array(input.length);
+    for (let i = 0; i < input.length; i++) {
+      let s = Math.max(-1, Math.min(1, input[i]));
+      samples[i] = s < 0 ? s * 0x8000 : s * 0x7FFF;
+    }
+    this.port.postMessage(
+      { type: 'pcm', buffer: samples.buffer },
+      [samples.buffer]
+    );
+    return true;
+  }
+}
+registerProcessor('recorder-processor', RecorderProcessor);
+`
+const handleAsrRequest = async (file) => {
+  isTranscribing.value = true
+  asrAbortController = new AbortController()
+
+  const formData = new FormData()
+  formData.append('file', file)
+
+  try {
+    await asrStream({
+      formData: formData,
+      signal: asrAbortController.signal
+    }, {
+      onToken: (content) => {
+        inputText.value += content
+      },
+      onDone: () => {
+        isTranscribing.value = false
+      },
+      onError: (msg) => {
+        isTranscribing.value = false
+        showToast(msg || '语音识别失败')
+      }
+    })
+  } catch (error) {
+    if (error.name !== 'AbortError') {
+      console.error('ASR 请求异常:', error)
+    }
+    isTranscribing.value = false
+  }
+}
+const handlePointerDown = async (e) => {
+  if (actionState.value !== 'mic' || isProcessing.value) return
+  isRecordingCancelled.value = false
+
+  // 1. 环境前置检查
+  if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+    showToast('当前环境不支持麦克风，请确保在 HTTPS 或 localhost 下运行')
+    return
+  }
+  if (!window.AudioWorkletNode) {
+    showToast('您的浏览器版本过低，不支持音频录制功能，请升级浏览器')
+    return
+  }
+  try {
+    // 2. 获取麦克风权限
+    mediaStream = await navigator.mediaDevices.getUserMedia({ audio: true })
+    audioContext = new (window.AudioContext || window.webkitAudioContext)()
+    await audioContext.resume()
+    // 3. 使用 Blob URL 加载 Worklet，绕过 Vite/Webpack 的 HMR 注入
+    const workletBlob = new Blob([RECORDER_WORKLET_CODE], { type: 'application/javascript; utf-8' })
+    const workletUrl = URL.createObjectURL(workletBlob)
+    await audioContext.audioWorklet.addModule(workletUrl)
+    URL.revokeObjectURL(workletUrl) // 加载后释放 URL
+    // 4. 创建节点链路
+    const source = audioContext.createMediaStreamSource(mediaStream)
+    recorderNode = new AudioWorkletNode(audioContext, 'recorder-processor')
+    // 5. 初始化 MP3 编码 Worker (修复1: 路径修正 & 修复4: 终止旧Worker)
+    if (mp3Worker) {
+      mp3Worker.terminate()
+    }
+    mp3Worker = new Mp3EncodeWorker()
+
+    mp3Worker.postMessage({
+      type: 'init',
+      sampleRate: audioContext.sampleRate,
+      bitRate: 128
+    })
+    // 6. 监听 Worker 返回的最终 MP3 Blob
+    mp3Worker.onmessage = (event) => {
+      if (event.data.type === 'mp3') {
+        const mp3Blob = event.data.blob
+        const file = new File([mp3Blob], 'recording.mp3', { type: 'audio/mp3' })
+        handleAsrRequest(file)
+      }
+    }
+    // 7. 监听 Worklet 采集的 PCM 数据并转发给 Worker
+    recorderNode.port.onmessage = (event) => {
+      if (event.data.type === 'pcm' && mp3Worker) {
+        mp3Worker.postMessage({ type: 'pcm', buffer: event.data.buffer }, [event.data.buffer])
+      }
+    }
+    // 8. 连接音频图
+    source.connect(recorderNode)
+    recorderNode.connect(audioContext.destination)
+    // 9. 通知 Worklet 开始录音
+    recorderNode.port.postMessage({ type: 'start' })
+    isRecording.value = true
+    // 10. 5 分钟最长录音限制
+    maxRecordTimer = setTimeout(() => {
+      handlePointerUp()
+      showToast('已达到最长录音时间限制（5分钟）')
+    }, 300000)
+    if (e.touches) {
+      touchStartPos.x = e.touches[0].clientX
+      touchStartPos.y = e.touches[0].clientY
+    }
+  } catch (error) {
+    console.error('麦克风启动失败:', error)
+
+    let errorMessage = '无法访问麦克风'
+    if (error instanceof DOMException) {
+      switch (error.name) {
+        case 'NotAllowedError':
+          errorMessage = '麦克风权限被拒绝，请在浏览器设置中允许本站访问'
+          break
+        case 'NotFoundError':
+          errorMessage = '未检测到麦克风设备'
+          break
+        case 'NotReadableError':
+          errorMessage = '麦克风被其他程序占用，请检查'
+          break
+        case 'SecurityError':
+          errorMessage = '安全限制，请确保在 HTTPS 环境下访问'
+          break
+        default:
+          errorMessage = `麦克风错误: ${error.message}`
+      }
+    }
+    showToast(errorMessage)
+    cleanUpRecordingResources()
+  }
+}
+const cleanUpRecordingResources = () => {
+  if (maxRecordTimer) {
+    clearTimeout(maxRecordTimer)
+    maxRecordTimer = null
+  }
+  if (recorderNode) {
+    recorderNode.disconnect()
+    recorderNode = null
+  }
+  if (audioContext) {
+    audioContext.close()
+    audioContext = null
+  }
+  if (mediaStream) {
+    mediaStream.getTracks().forEach(track => track.stop())
+    mediaStream = null
+  }
+  isRecording.value = false
+}
+const handlePointerUp = () => {
+  if (!isRecording.value) return
+
+  // 1. 先停止录音节点和通知生成
+  if (!isRecordingCancelled.value) {
+    if (recorderNode) {
+      recorderNode.port.postMessage({ type: 'stop' })
+    }
+    if (mp3Worker) {
+      mp3Worker.postMessage({ type: 'stop' })
+    }
+  } else {
+    // 如果是取消状态，直接终止 Worker 丢弃录音
+    if (mp3Worker) {
+      mp3Worker.terminate()
+      mp3Worker = null
+    }
+  }
+  // 2. 最后清理音频资源
+  cleanUpRecordingResources()
+}
+const handleTouchMove = (e) => {
+  if (!isRecording.value || isRecordingCancelled.value) return
+  const touch = e.touches[0]
+  const deltaY = Math.abs(touch.clientY - touchStartPos.y)
+  const deltaX = Math.abs(touch.clientX - touchStartPos.x)
+  if (deltaX > 40 || deltaY > 40) {
+    isRecordingCancelled.value = true
+  }
+}
+const handlePointerCancel = () => {
+  if (isRecording.value) {
+    isRecordingCancelled.value = true
+    handlePointerUp()
+  }
+}
+const handleActionClick = () => {
+  if (actionState.value === 'send') {
+    sendMessage()
+  }
+}
 onMounted(() => {
   loadHistory()
 })
 onBeforeUnmount(() => {
   if (abortController.value) abortController.value.abort()
+  if (asrAbortController) asrAbortController.abort()
+  cleanUpRecordingResources()
+  if (mp3Worker) mp3Worker.terminate()
 })
 defineExpose({
   isOpen,

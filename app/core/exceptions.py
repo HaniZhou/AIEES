@@ -16,6 +16,15 @@ class StrictFormatter(logging.Formatter):
 # 使用缓存防止重复创建 Handler
 _logger_cache: dict[str, logging.Logger] = {}
 
+
+# 纯业务异常定义
+class AppBusinessException(Exception):
+    """业务阻断异常：仅用于表达业务规则拒绝(404/403/400)。严禁用于表达系统故障。"""
+    def __init__(self, code: int, message: str, log_module: str = "db"):
+        self.code = code
+        self.message = message
+        self.log_module = log_module
+
 def _setup_logger(module_name: str) -> logging.Logger:
     """函数目的：根据模块名获取或创建对应的文件 Logger，确保日志物理隔离。
     参数信息：- module_name: str，日志模块名（如 'db', 'ai'），对应文件为 {module_name}.log。

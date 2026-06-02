@@ -2,8 +2,12 @@
 登录限流与账号锁定模块
 """
 import logging
-
+from fastapi import Request, Depends, HTTPException
+from typing import Annotated
 from app.Config import AuthSecurityConfig
+from app.core.security import require_student_or_teacher
+from app.model.schema.schema import TokenData
+from app.core.redis_pool import get_redis
 
 logger = logging.getLogger("auth.rate_limiter")
 
@@ -157,3 +161,27 @@ async def verify_captcha(redis_client, captcha_key: str, user_answer: str) -> bo
     if not is_correct:
         logger.warning(f"Captcha verification failed for key [{captcha_key}]: expected={stored_answer}, got={user_answer}")
     return is_correct
+
+
+async def asr_rate_limit(
+        request: Request,
+        token_data: Annotated[TokenData, Depends(require_student_or_teacher)]
+) -> TokenData:
+    """函数目的：限制用户每分钟调用 ASR 接口的次数为 20 次。
+    参数信息：
+        - request: Request，FastAPI 请求对象。
+        - token_data: TokenData，由 require_student_or_teacher 解析得到的 JWT 载荷。
+    返回值：TokenData，验证通过后原样返回供下游使用。
+    """
+    redis = get_redis()
+    key = f"asr_limit:{token_data.id}"
+    count = await redis.incr(key)
+
+    if count == 1:
+        await redis.expire(key, 60)
+
+    if count > 20:
+        logger.warning(f"ASR rate limit exceeded for user [{token_data.id}]")
+        raise HTTPException(status_code=429, detail="请求过于频繁，请稍后再试")
+
+    return token_data

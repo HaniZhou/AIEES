@@ -4,12 +4,16 @@ from fastapi.responses import JSONResponse
 from fastapi import status, Request
 from collections.abc import AsyncIterable
 from typing import Annotated
-from fastapi import Header
+from fastapi import Header, HTTPException
 from fastapi.sse import EventSourceResponse, ServerSentEvent
-from app.core.tools import write_resource, generate_gai_reply_stream
+import base64
+
+from app.core.rate_limiter import asr_rate_limit
+from app.core.tools import write_resource
+from app.core.AI_tools import generate_gai_reply_stream, generate_asr_reply_stream, asr_logger, validate_asr_file
 from app.core.security import verify_token_return_payload, require_teacher, require_student
-from app.model.schema.schema import TokenData, ChatRequest, PhaseType, ScenarioType
-from app.Config import Prompt
+from app.model.schema.schema import TokenData, ChatRequest,  ScenarioType
+from app.Config import Prompt, Limit
 router = APIRouter()
 #  统一响应构造器 
 def _success(data=None) -> JSONResponse:
@@ -109,6 +113,59 @@ async def chat_stream_gai(
                 break
     except Exception as e:
         yield ServerSentEvent(data={"error": str(e)}, event="error")
+
+    if not client_disconnected:
+        yield ServerSentEvent(data="[DONE]", event="done")
+
+
+
+@router.post("/asr", response_class=EventSourceResponse)
+async def speech_to_text_stream(
+        request: Request,
+        # 关键修复：将文件校验作为依赖注入，确保在流式响应建立前拦截 400 错误
+        asr_file_data: dict = Depends(validate_asr_file),
+        token_data: TokenData = Depends(asr_rate_limit)
+) -> AsyncIterable[ServerSentEvent]:
+    """流式音频文件上传识别接口"""
+
+    # 从依赖返回值中解包数据
+    contents = asr_file_data["contents"]
+    content_type = asr_file_data["content_type"]
+
+    # 构造 Data URI 和 Messages
+    data_uri = base64.b64encode(contents).decode('utf-8')
+    audio_format = Limit.ASR_ALLOWED_CONTENT_TYPES.get(content_type, "mp3")
+
+    messages = [
+        {
+            "role": "user",
+            "content": [
+                {
+                    "type": "input_audio",
+                    "input_audio": {
+                        "data": data_uri,
+                        "format": audio_format
+                    }
+                }
+            ]
+        }
+    ]
+
+    client_disconnected = False
+
+    try:
+        async for text_chunk in generate_asr_reply_stream(messages):
+            yield ServerSentEvent(data={"content": text_chunk}, event="token")
+            if await request.is_disconnected():
+                client_disconnected = True
+                break
+    except HTTPException as e:
+        # 拦截连接阶段重试耗尽抛出的 502 异常，转为 SSE error 事件
+        yield ServerSentEvent(data={"error": "语音识别服务暂时不可用"}, event="error")
+    except Exception as e:
+        # 拦截推流中途断开或其他未预料异常，转为 SSE error 事件
+        asr_logger.error(f"Unexpected error during ASR streaming: {str(e)}")
+        yield ServerSentEvent(data={"error": "语音识别中断，请重试"}, event="error")
 
     if not client_disconnected:
         yield ServerSentEvent(data="[DONE]", event="done")

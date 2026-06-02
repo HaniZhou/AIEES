@@ -1,3 +1,4 @@
+from app.core.AI_tools import _execute_gai_analysis
 from app.crud.db import db_create_course_with_students, db_get_course_detail, db_get_course_detail_for_student, \
     db_get_section_detail, db_get_chapters_with_sections, \
     db_delete_course, \
@@ -15,14 +16,13 @@ from app.model.schema.course import CourseInfo, ChapterBatchPayload, TaskCreateA
 from app.core.response import _success
 from app.core.security import require_teacher, require_student, require_student_or_teacher, verify_token_return_payload
 from app.model.schema.schema import TokenData, RoleType
-from app.core.tools import generate_course_code, generate_gai_analysis_text, logger as ai_logger
+from app.core.tools import generate_course_code
 from app.core.tools import write_image, remove_file
 from fastapi.responses import JSONResponse
 from fastapi import Depends, HTTPException, status, APIRouter, Form, UploadFile, File, Query, BackgroundTasks
 import uuid
 from typing import Annotated
 import json
-from app.Config import Prompt
 from app.core.arq_jobs import process_task_grading_job
 from app.core.redis_pool import get_arq_redis
 
@@ -419,7 +419,7 @@ async def submit_gai_task(
         token_data: Annotated[TokenData, Depends(require_student)],
         background_tasks: BackgroundTasks
 ):
-    """函数目的：接收学生 GAI 对话提交，落库并投递至后台执行 AI 分析。
+    """函数目的：接收学生 人机交互任务，落库并投递至后台执行 AI 分析。
     参数信息：- course_id: 课程UUID; - task_id: 任务ID; - payload: 对话消息列表; - token_data: 学生鉴权数据; - background_tasks: FastAPI后台任务器。
     返回值：JSONResponse，空数据成功信封。
     """
@@ -428,32 +428,6 @@ async def submit_gai_task(
         _execute_gai_analysis, task_id=task_id, completion_id=completion_id, messages=payload.messages
     )
     return _success({})
-
-
-async def _execute_gai_analysis(task_id: int, completion_id: int, messages: list) -> None:
-    """函数目的：后台异步执行大模型学情分析并持久化结果。
-    参数信息：- task_id: 关联的 GAI 任务 ID; - completion_id: 待更新的提交记录主键 ID; - messages: 原始对话列表。
-    返回值：无。
-    """
-    try:
-        task_info = await db_get_analysis_task_info(task_id)
-        if not task_info:
-            await db_update_gai_task_analysis_result(completion_id, "AI分析失败：任务配置丢失")
-            return
-
-        system_prompt = (
-            f"{Prompt.TEACHER_ANALYSIS_SYSTEM_PROMPT}\n\n"
-            f"【任务描述】：{task_info['task_description']}\n"
-            f"【分析要求】：{task_info['analysis_description']}\n"
-            f"【评价标准】：{task_info['evaluation_criterion']}"
-        )
-        user_content = "\n".join([f"{msg.get('role', 'unknown')}: {msg.get('content', '')}" for msg in messages])
-        analysis_text = await generate_gai_analysis_text(system_prompt, user_content)
-        await db_update_gai_task_analysis_result(completion_id, analysis_text)
-    except Exception as e:
-        ai_logger.error(
-            f"GAI analysis execution failed, task_id={task_id}, completion_id={completion_id}, error: {str(e)}")
-        await db_update_gai_task_analysis_result(completion_id, "AI分析失败，请稍后重试")
 
 
 #  师生共用接口 
