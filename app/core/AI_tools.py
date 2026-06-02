@@ -50,8 +50,8 @@ async def generate_gai_reply_stream(messages: list):
     completion = await client.chat.completions.create(
         model="GLM-5.1",
         messages=messages,
-        temperature=1,
-        top_p=1,
+        temperature=0.8,
+        top_p=0.8,
         max_tokens=16000,
         extra_body={"chat_template_kwargs": {"enable_thinking": False}},
         stream=True,
@@ -73,8 +73,8 @@ async def generate_gai_analysis_text(system_prompt: str, user_content: str) -> s
             completion = await client.chat.completions.create(
                 model="GLM-5.1",
                 messages=messages,
-                temperature=0.9,
-                top_p=1,
+                temperature=0.8,
+                top_p=0.8,
                 max_tokens=20000,
                 timeout=httpx.Timeout(connect=3.0, read=240.0, write=15.0, pool=5.0),
             )
