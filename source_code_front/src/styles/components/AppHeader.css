@@ -91,7 +91,6 @@
   position: fixed; top: 0; left: 0; right: 0; bottom: 0;
   background-color: rgba(0, 0, 0, 0.5); /* 黑色半透明阴影 */
   backdrop-filter: blur(4px); /* 轻微背景模糊 */
-  -webkit-backdrop-filter: blur(4px);
   z-index: 9999; /* 极高层级 */
   display: flex; align-items: center; justify-content: center;
 }
@@ -100,7 +99,7 @@
 .pwd-modal-card {
   width: 100%; max-width: 440px;
   background-color: rgba(255, 255, 255, 0.95);
-  backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
+  backdrop-filter: blur(20px);
   border-radius: 24px; padding: 40px 32px;
   box-shadow: 0 16px 40px rgba(0, 0, 0, 0.15);
   display: flex; flex-direction: column; gap: 24px; /* 五列间距 */

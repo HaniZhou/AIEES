@@ -351,62 +351,65 @@
 
 
 /* ==========================================
-   GAI 侧边栏布局覆写与对齐优化 (最终修复版)
+   GAI 侧边栏布局覆写与对齐
    ========================================== */
 
-/* 1. 提升页面层级作为定位上下文 */
+/* 1. 确立页面层级作为定位上下文 */
 .student-study-page {
-  position: relative !important;
+  position: relative; /* 移除 !important，页面级无需提权 */
 }
 
-/* 2. 穿透 GAI 容器，改为绝对定位铺满底层 */
-.student-study-page ::v-deep(.agi-container) {
-  position: absolute !important;
-  top: 0; left: 0; right: 0; bottom: 0;
-  width: 100% !important;
-  height: 100% !important;
-  pointer-events: none; /* 允许鼠标穿透到底层学习区域 */
+/* 2. GAI 容器穿透：分屏时改为绝对定位铺满底层，脱离文档流避免撑开主内容 */
+.student-study-page.gai-split-active ::v-deep(.agi-container) {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none; /* 容器自身不拦截事件 */
 }
 
-/* 3. 穿透覆写悬浮按钮位置 */
-.student-study-page ::v-deep(.agi-trigger) {
-  position: absolute !important;
-  right: 16px;
-  top: 50%;
-  transform: translateY(-50%) !important;
-  pointer-events: auto;
-  transition: right 0.3s cubic-bezier(0.25, 0.8, 0.25, 1) !important;
-}
-.student-study-page ::v-deep(.agi-trigger.is-open) {
-  right: calc(min(400px, 40vw) + 32px - 16px) !important;
-}
-
-/* 4. 核心修复：GAI 面板默认高度精准对齐内容区 (未完成学习时) */
-.student-study-page ::v-deep(.agi-panel) {
-  position: absolute !important;
-  right: 24px !important;
-  top: max(12%, 80px) !important;    /* 精准对齐 area-header 初始高度 */
-  bottom: 24px !important;           /* 修复：对齐主容器底部 padding，解决高度过小 */
-  height: auto !important;
-  transform: none !important;
-  pointer-events: auto;
-  transition: top 0.5s cubic-bezier(0.25, 0.8, 0.25, 1),
-              bottom 0.5s cubic-bezier(0.25, 0.8, 0.25, 1) !important;
-}
-
-/* 5. 强制内容区右侧留出 24px 视觉呼吸空间，拒绝贴合 */
-.area-content.gai-split-active {
-  width: calc(100% - 24px) !important;
-  margin-right: 24px !important;
-}
-
-/* 6. 完成评价后的联动：GAI 撑满放大 */
+/* 3. GAI 面板：合并第4点和第6点，补齐缺失的 width，与主内容避让宽度对齐 */
 .student-study-page.gai-split-active ::v-deep(.agi-panel) {
-  top: 50px !important;   /* 对应评价后 area-header 收缩的 50px */
-  bottom: 24px !important; /* 对应评价后底部仅剩的主容器 padding */
+  position: absolute !important; /* 穿透子组件需提权 */
+  right: 24px !important;
+  top: 50px !important;          /* 直接应用收缩后的顶部高度 */
+  bottom: 24px !important;
+  height: auto !important;
+  width: min(400px, 40vw) !important; /* 【关键修复】明确侧边栏宽度，与 main-body 的 padding 匹配 */
+  min-width: 320px !important;        /* 保证可用性下限 */
+  left: auto !important;              /* 覆盖原组件的 left: 50% 居中 */
+  transform: none !important;         /* 覆盖原组件的 translate(-50%, -50%) */
+  pointer-events: auto;               /* 面板内部恢复点击 */
+  transition: none !important;        /* 禁用原组件过渡，防止位移抖动 */
 }
 
-/* 7. 隐藏收起按钮：完成评价后隐藏悬浮球，防止学生关闭 GAI */
+/* 4. 隐藏触发悬浮球：评价完成后锁定 GAI 面板，防止关闭 */
 .student-study-page.gai-split-active ::v-deep(.agi-trigger) {
   display: none !important;
+}
+
+/* 5. 主内容区避让：统一右侧留白逻辑 */
+.main-body.gai-split-active {
+  padding-right: calc(min(400px, 40vw) + 24px); /* 与面板宽度+右侧间距保持一致 */
+}
+
+.area-content.gai-split-active {
+  width: calc(100% - 24px) !important; /* 留出 24px 视觉呼吸空间 */
+  margin-right: 24px !important;
+  margin-left: 0 !important;          /* 确保居左 */
+}
+
+/* 6. 精简过渡动画屏蔽：直接在容器层级切断所有过渡 */
+.student-study-page.gai-split-active ::v-deep(.agi-panel),
+.student-study-page.gai-split-active ::v-deep(.agi-trigger),
+.student-study-page.gai-split-active ::v-deep(.slide-enter-active),
+.student-study-page.gai-split-active ::v-deep(.slide-leave-active),
+.student-study-page.gai-split-active ::v-deep(.slide-enter-from),
+.student-study-page.gai-split-active ::v-deep(.slide-leave-to) {
+  transition: none !important;
+  transform: none !important;
+  opacity: 1 !important;
 }

@@ -13,10 +13,9 @@
   left: 0;
   right: 0;
   bottom: 0;
-  background-color: rgba(0, 0, 0, 0.3); /* 透明度略微降低，配合模糊效果 */
-  backdrop-filter: blur(3px); /* 背景模糊效果 */
-  -webkit-backdrop-filter: blur(4px);
-  z-index: 1; /* 层级1：最底层 */
+  background-color: rgba(0, 0, 0, 0.3);
+  backdrop-filter: blur(3px);
+  z-index: 1;
   animation: overlayFadeIn 0.3s ease-out forwards;
 }
 @keyframes overlayFadeIn {
@@ -45,15 +44,9 @@
   transform: translateY(-50%) translateY(-2px);
   box-shadow: 0 8px 20px rgba(59, 140, 255, 0.6);
 }
-/* === 修改：默认模式半隐藏定位修正 === */
 .agi-trigger.is-open {
-  right: calc(min(400px, 40vw)); /* 伸入面板左侧 16px */
+  right: calc(75vw - 16px);
   box-shadow: 0 4px 12px rgba(59, 140, 255, 0.3);
-}
-/* === 修改：任务模式下的触发按钮位置，半隐藏在面板左侧 === */
-.is-task-mode .agi-trigger.is-open {
-  right: calc(74vw); /* 伸入面板左侧 16px */
-  transform: translateY(-50%);
 }
 .agi-trigger .trigger-icon {
   width: 24px;
@@ -61,30 +54,21 @@
 }
 .agi-panel {
   position: fixed;
-  right: 24px;
-  top: 50%;
-  transform: translateY(-50%);
-  width: min(400px, 40vw);
-  height: min(700px, 80vh);
-  background: rgba(255, 255, 255, 0.85);
-  backdrop-filter: blur(20px) saturate(180%);
-  border-radius: 20px;
-  box-shadow: 0px 20px 60px rgba(0,0,0,0.12), inset 0px 0px 0px 1px rgba(255,255,255,0.6);
-  display: flex;
-  flex-direction: column;
-  overflow: hidden;
-  z-index: 3; /* 层级3：位于按钮之上，实现遮挡 */
-}
-/* === 任务模式下面板居中加宽 === */
-.is-task-mode .agi-panel {
-  right: auto;
   left: 50%;
   top: 50%;
   transform: translate(-50%, -50%);
   width: 50vw;
   min-width: 500px;
-  height: 80vh;
+  height: 88vh;
+  background: #FFFFFF;
+  border-radius: 12px;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.08);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  z-index: 3;
 }
+
 .agi-panel::before {
   content: '';
   position: absolute;
@@ -640,20 +624,11 @@
 .slide-enter-from,
 .slide-leave-to {
   opacity: 0;
-  transform: translate(24px, -50%) scale(0.97);
-}
-/* 任务模式下的过渡动画 */
-.is-task-mode .slide-enter-from,
-.is-task-mode .slide-leave-to {
-  opacity: 0;
   transform: translate(-50%, -50%) scale(0.97);
 }
 @media (max-width: 1024px) and (min-width: 769px) {
   .agi-panel {
     width: min(360px, 50vw);
     height: min(650px, 85vh);
-  }
-  .agi-trigger.is-open {
-    right: calc(min(360px, 50vw)); /* 兼容半隐藏逻辑 */
   }
 }

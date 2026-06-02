@@ -1457,7 +1457,6 @@
     pointer-events: none;
     z-index: 2;
     backdrop-filter: blur(4px);
-    -webkit-backdrop-filter: blur(4px);
     transition: opacity 0.3s;
 }
 
@@ -1651,4 +1650,50 @@
     align-items: center;
     flex-shrink: 0;
 }
+
+/* ==================== GAI 右侧浮动覆写 ==================== */
+.course-teacher-gai.is-paired-mode :deep(.agi-panel) {
+  position: fixed !important;
+  right: 24px !important;
+  top: 50% !important;
+  transform: translateY(-50%) !important;
+  width: min(400px, 40vw) !important;
+  height: min(700px, 80vh) !important;
+  left: auto !important;
+  min-width: unset !important;
+  min-height: unset !important;
+  background: rgba(255, 255, 255, 0.85) !important;
+  backdrop-filter: blur(20px) saturate(180%) !important;
+  border-radius: 20px !important;
+  box-shadow: 0px 20px 60px rgba(0,0,0,0.12), inset 0px 0px 0px 1px rgba(255,255,255,0.6) !important;
+}
+
+.course-teacher-gai.is-paired-mode :deep(.slide-enter-from),
+.course-teacher-gai.is-paired-mode :deep(.slide-leave-to) {
+  opacity: 0;
+  transform: translate(24px, -50%) scale(0.97) !important;
+}
+
+/* ==================== 详情面板置于 GAI 遮罩之上 ==================== */
+.detail-paired-panel {
+  position: fixed !important;
+  z-index: 10001 !important;
+}
+
+
+/* ==================== 新增：全局统一遮罩 ==================== */
+.global-agi-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.3);
+  backdrop-filter: blur(3px);
+  z-index: 9998;
+}
+
+/* 确保详情面板和 GAI 面板在全局遮罩之上 */
+.detail-paired-panel { z-index: 10001 !important; }
+.course-teacher-gai { z-index: 9999; }
 

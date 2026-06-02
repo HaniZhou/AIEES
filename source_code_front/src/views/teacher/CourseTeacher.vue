@@ -229,85 +229,86 @@
 
     <!-- ================= 全局模态遮罩集合 ================= -->
     <teleport to="body">
+  <transition name="fade">
+    <div v-if="showDetailPanel" class="global-agi-overlay" @click="handleGlobalOverlayClick"></div>
+  </transition>
       <!-- 1. 预览模式：详情面板 -->
-      <transition name="fade">
-        <div v-if="showDetailPanel && !isEditMode" class="modal-overlay glass-overlay" @click.self="closeDetailPanel">
-          <div class="detail-paired-panel">
-            <div class="detail-panel-header">
-              <h3>{{ detailTargetName }}</h3>
-              <div class="close-detail-btn" @click="closeDetailPanel">
-                <van-icon name="cross" size="20"/>
-              </div>
+      <div v-if="showDetailPanel && !isEditMode">
+        <div class="detail-paired-panel">
+          <div class="detail-panel-header">
+            <h3>{{ detailTargetName }}</h3>
+            <div class="close-detail-btn" @click="closeDetailPanel">
+              <van-icon name="cross" size="20"/>
             </div>
-            <div class="detail-charts-row">
-              <div class="chart-box">
-                <van-circle v-model:current-rate="currentCompRate" :rate="detailData.completionRate" :speed="100"
-                            color="#4A90E2" size="90px" :stroke-width="15">
-                  <div class="circle-inner"><span class="circle-text">{{ currentCompRate.toFixed(0) }}%</span></div>
-                </van-circle>
-                <span class="chart-label">{{
-                    detailType === 'section' ? '学习人数/全部人数' : '完成人数/全部人数'
-                  }}</span>
-              </div>
-              <div class="chart-box">
-                <van-circle v-model:current-rate="currentScoreRate" :rate="detailData.scoreRate" :speed="100"
-                            color="#10B981" size="90px" :stroke-width="15">
-                  <div class="circle-inner"><span class="circle-text">{{
-                      detailType === 'section' ? (currentScoreRate / 20).toFixed(1) : currentScoreRate.toFixed(0)
-                    }}</span></div>
-                </van-circle>
-                <span class="chart-label">{{ detailType === 'section' ? '实际学习效果/5分' : '平均得分/100分' }}</span>
-              </div>
+          </div>
+          <div class="detail-charts-row">
+            <div class="chart-box">
+              <van-circle v-model:current-rate="currentCompRate" :rate="detailData.completionRate" :speed="100"
+                          color="#4A90E2" size="90px" :stroke-width="15">
+                <div class="circle-inner"><span class="circle-text">{{ currentCompRate.toFixed(0) }}%</span></div>
+              </van-circle>
+              <span class="chart-label">{{
+                  detailType === 'section' ? '学习人数/全部人数' : '完成人数/全部人数'
+                }}</span>
             </div>
-            <div class="detail-lists-row">
-              <div class="list-col left-list blur-vertical">
-                <h4>{{ detailType === 'section' ? '已学习学生' : '已完成学生' }}</h4>
-                <template v-for="group in groupStudentsByClass(detailData.completedStudents, 'name')"
-                          :key="group.class_name">
-                  <div class="class-group-card">
-                    <div class="class-group-header" @click="toggleClassExpand('completed-', group.class_name)">
-                      <span class="class-group-title">{{ group.class_name }}</span>
-                      <van-icon name="arrow" class="class-arrow"
-                                :class="{ 'is-expanded': isClassExpanded('completed-', group.class_name) }"/>
-                    </div>
-                    <transition name="class-slide">
-                      <div class="class-group-body-inner" v-if="isClassExpanded('completed-', group.class_name)">
-                        <div class="list-row" v-for="(stu, idx) in group.students" :key="idx">
-                          <span class="stu-name">{{ stu.name }}</span>
-                          <span class="stu-score">{{ detailType === 'section' ? '学习质量：' : '任务得分：' }}{{
-                              stu.score
-                            }}</span>
-                        </div>
-                      </div>
-                    </transition>
+            <div class="chart-box">
+              <van-circle v-model:current-rate="currentScoreRate" :rate="detailData.scoreRate" :speed="100"
+                          color="#10B981" size="90px" :stroke-width="15">
+                <div class="circle-inner"><span class="circle-text">{{
+                    detailType === 'section' ? (currentScoreRate / 20).toFixed(1) : currentScoreRate.toFixed(0)
+                  }}</span></div>
+              </van-circle>
+              <span class="chart-label">{{ detailType === 'section' ? '实际学习效果/5分' : '平均得分/100分' }}</span>
+            </div>
+          </div>
+          <div class="detail-lists-row">
+            <div class="list-col left-list blur-vertical">
+              <h4>{{ detailType === 'section' ? '已学习学生' : '已完成学生' }}</h4>
+              <template v-for="group in groupStudentsByClass(detailData.completedStudents, 'name')"
+                        :key="group.class_name">
+                <div class="class-group-card">
+                  <div class="class-group-header" @click="toggleClassExpand('completed-', group.class_name)">
+                    <span class="class-group-title">{{ group.class_name }}</span>
+                    <van-icon name="arrow" class="class-arrow"
+                              :class="{ 'is-expanded': isClassExpanded('completed-', group.class_name) }"/>
                   </div>
-                </template>
-              </div>
-              <div class="list-col right-list blur-vertical">
-                <h4>{{ detailType === 'section' ? '未学习学生' : '未完成学生' }}</h4>
-                <template v-for="group in groupStudentsByClass(detailData.uncompletedStudents, 'name')"
-                          :key="group.class_name">
-                  <div class="class-group-card">
-                    <div class="class-group-header" @click="toggleClassExpand('uncompleted-', group.class_name)">
-                      <span class="class-group-title">{{ group.class_name }}</span>
-                      <van-icon name="arrow" class="class-arrow"
-                                :class="{ 'is-expanded': isClassExpanded('uncompleted-', group.class_name) }"/>
-                    </div>
-                    <transition name="class-slide">
-                      <div class="class-group-body-inner" v-if="isClassExpanded('uncompleted-', group.class_name)">
-                        <div class="list-row" v-for="(stu, idx) in group.students" :key="idx">
-                          <span class="stu-name">{{ stu.name }}</span>
-                          <span class="stu-score empty">-</span>
-                        </div>
+                  <transition name="class-slide">
+                    <div class="class-group-body-inner" v-if="isClassExpanded('completed-', group.class_name)">
+                      <div class="list-row" v-for="(stu, idx) in group.students" :key="idx">
+                        <span class="stu-name">{{ stu.name }}</span>
+                        <span class="stu-score">{{ detailType === 'section' ? '学习质量：' : '任务得分：' }}{{
+                            stu.score
+                          }}</span>
                       </div>
-                    </transition>
+                    </div>
+                  </transition>
+                </div>
+              </template>
+            </div>
+            <div class="list-col right-list blur-vertical">
+              <h4>{{ detailType === 'section' ? '未学习学生' : '未完成学生' }}</h4>
+              <template v-for="group in groupStudentsByClass(detailData.uncompletedStudents, 'name')"
+                        :key="group.class_name">
+                <div class="class-group-card">
+                  <div class="class-group-header" @click="toggleClassExpand('uncompleted-', group.class_name)">
+                    <span class="class-group-title">{{ group.class_name }}</span>
+                    <van-icon name="arrow" class="class-arrow"
+                              :class="{ 'is-expanded': isClassExpanded('uncompleted-', group.class_name) }"/>
                   </div>
-                </template>
-              </div>
+                  <transition name="class-slide">
+                    <div class="class-group-body-inner" v-if="isClassExpanded('uncompleted-', group.class_name)">
+                      <div class="list-row" v-for="(stu, idx) in group.students" :key="idx">
+                        <span class="stu-name">{{ stu.name }}</span>
+                        <span class="stu-score empty">-</span>
+                      </div>
+                    </div>
+                  </transition>
+                </div>
+              </template>
             </div>
           </div>
         </div>
-      </transition>
+      </div>
 
       <!-- 2. 人机交互任务预览 -->
       <transition name="fade">
@@ -368,7 +369,9 @@
               <h3>{{ currentGaiTask ? '编辑人机交互任务' : '发布人机交互任务' }}</h3>
               <div class="deadline-trigger" @click="showGaiTimePicker = true">
                 <van-icon name="clock-o" size="16"/>
-                <span>{{ gaiTaskForm.deadline ? formatDisplayTime(gaiTaskForm.deadline) : '设置截止时间 (必填)' }}</span>
+                <span>{{
+                    gaiTaskForm.deadline ? formatDisplayTime(gaiTaskForm.deadline) : '设置截止时间 (必填)'
+                  }}</span>
               </div>
             </div>
 
@@ -381,17 +384,20 @@
 
               <div class="gai-form-item gai-flex-item">
                 <label class="gai-form-item-label">任务描述</label>
-                <textarea class="custom-textarea" v-model="gaiTaskForm.desc" placeholder="课程学生可见，指导学生如何与AI交互"></textarea>
+                <textarea class="custom-textarea" v-model="gaiTaskForm.desc"
+                          placeholder="课程学生可见，指导学生如何与AI交互"></textarea>
               </div>
 
               <div class="gai-form-item gai-flex-item">
                 <label class="gai-form-item-label">分析需求</label>
-                <textarea class="custom-textarea" v-model="gaiTaskForm.analysisReq" placeholder="告诉后台系统如何分析学生的对话记录"></textarea>
+                <textarea class="custom-textarea" v-model="gaiTaskForm.analysisReq"
+                          placeholder="告诉后台系统如何分析学生的对话记录"></textarea>
               </div>
 
               <div class="gai-form-item">
                 <label class="gai-form-item-label">评分</label>
-                <textarea class="custom-textarea" v-model="gaiTaskForm.scoreRule" placeholder="如：探索深度40%，逻辑性60%"></textarea>
+                <textarea class="custom-textarea" v-model="gaiTaskForm.scoreRule"
+                          placeholder="如：探索深度40%，逻辑性60%"></textarea>
               </div>
             </div>
 
@@ -402,7 +408,8 @@
             </div>
 
             <!-- 时间选择器弹窗 -->
-            <van-popup v-model:show="showGaiTimePicker" class="center-time-popup" position="center" :overlay="false" teleport="body" :z-index="3001">
+            <van-popup v-model:show="showGaiTimePicker" class="center-time-popup" position="center" :overlay="false"
+                       teleport="body" :z-index="3001">
               <div class="time-picker-wrapper" @wheel.prevent="handleTimePickerWheel">
                 <div class="time-picker-header">
                   <span @click="clearGaiTime" class="tp-btn clear">清除</span>
@@ -587,7 +594,14 @@
       </transition>
     </teleport>
 
-    <GAI ref="agiRef" :hideTrigger="showDetailPanel" roleSuffix="teacher"/>
+    <GAI
+        ref="agiRef"
+        :hideTrigger="showDetailPanel"
+        class="course-teacher-gai"
+        :class="{'is-paired-mode': showDetailPanel}"
+        roleSuffix="teacher"
+        :overlay="!showDetailPanel"
+    />
   </div>
 </template>
 
@@ -630,11 +644,6 @@ import {
 
 const md = new MarkdownIt({html: false, breaks: true}).use(texmath, {engine: katex, delimiters: 'dollars'})
 
-/**
- * 使用DOMPurify过滤Markdown渲染后的HTML，防止XSS
- * @param {string} raw - 原始Markdown文本
- * @returns {string} 安全的HTML字符串
- */
 const renderMd = (raw) => DOMPurify.sanitize(md.render(raw), {USE_PROFILES: {html: true, mathMl: true}})
 
 const router = useRouter()
@@ -651,20 +660,20 @@ const showInviteModal = ref(false)
 const isInvitationValid = ref(false)
 const inviteCode = ref('')
 
-/**
- * 切换邀请码有效状态并调用后端更新接口
- * @returns {Promise<void>}
- */
 const toggleInvitationValid = async () => {
   const newState = !isInvitationValid.value
   await update_course(courseInfo.id, {is_invitation_valid: newState})
   isInvitationValid.value = newState
   showToast({message: newState ? '邀请码已开启' : '邀请码已关闭', type: 'success'})
 }
+const handleGlobalOverlayClick = () => {
+  if (showDetailPanel.value) {
+    closeDetailPanel()
+  } else if (agiRef.value?.isOpen) {
+    agiRef.value.togglePanel(false)
+  }
+}
 
-/**
- * 打开邀请码弹窗
- */
 const openInviteModal = () => {
   showInviteModal.value = true
 }
@@ -677,11 +686,6 @@ const taskTimePickerValue = ref([])
 const showGaiTimePicker = ref(false)
 const gaiTimePickerValue = ref([])
 
-/**
- * 将时间字符串转换为选择器数组格式
- * @param {string} str - ISO时间字符串
- * @returns {Array} 年月日数组
- */
 const formatStringToArr = (str) => {
   if (!str) return []
   const d = new Date(str)
@@ -689,32 +693,17 @@ const formatStringToArr = (str) => {
   return [String(d.getFullYear()), pad(d.getMonth() + 1), pad(d.getDate())]
 }
 
-/**
- * 将选择器数组转换为ISO时间字符串
- * @param {Array} arr - 年月日数组
- * @returns {string|null} ISO时间字符串
- */
 const formatArrToString = (arr) => {
   if (!arr || arr.length < 3) return null
   return new Date(arr[0], arr[1] - 1, arr[2], 23, 59, 59).toISOString()
 }
 
-/**
- * 将时间字符串格式化为UI展示文本
- * @param {string} str - ISO时间字符串
- * @returns {string} 格式化后的文本
- */
 const formatDisplayTime = (str) => {
   if (!str) return ''
   const d = new Date(str)
   return `${d.getFullYear()}年${d.getMonth() + 1}月${d.getDate()}日`
 }
 
-/**
- * 计算截止时间倒计时文本
- * @param {string} deadlineStr - ISO时间字符串
- * @returns {string} 倒计时文本
- */
 const getCountdown = (deadlineStr) => {
   if (!deadlineStr) return ''
   const now = currentTime.value
@@ -735,11 +724,6 @@ const isTaskDetailLoading = ref(false)
 
 const courseInfo = reactive({id: '', name: '', cover: '', teacher: teacherName.value})
 
-/**
- * 将后端章节结构映射为前端本地结构
- * @param {Array} chapters - 后端章节列表
- * @returns {Array} 映射后的本地章节列表
- */
 const mapChaptersToLocal = (chapters) => chapters.map(ch => ({
   id: ch.chapter_id,
   order: ch.chapter_order,
@@ -763,16 +747,9 @@ const gaiTaskList = ref([])
 const studentList = ref([])
 const pendingFiles = reactive({})
 
-/**
- * 生成唯一的本地临时ID
- * @returns {string} 临时ID字符串
- */
 const genLocalId = () => `local_${Date.now()}_${Math.floor(Math.random() * 10000)}`
 
-/**
- * 切换编辑模式，处理保存或进入编辑状态的逻辑
- * @returns {Promise<void>}
- */
+
 const toggleEditMode = async () => {
   if (isEditMode.value) {
     if (activeLeftTab.value === 'chapter') {
@@ -822,9 +799,6 @@ const toggleEditMode = async () => {
   }
 }
 
-/**
- * 删除当前课程
- */
 const handleDeleteCourse = () => {
   showConfirmDialog({title: '删除课程', message: '确定删除该课程吗？此操作不可恢复。'}).then(async () => {
     await delete_course(courseInfo.id)
@@ -1162,7 +1136,6 @@ const saveTask = async () => {
   if (!taskForm.title) return showToast({message: '请输入任务名称', type: 'fail'})
   if (!taskForm.deadline) return showToast({message: '请设置截止时间', type: 'fail'})
 
-  // 每次提交前重置所有题目的错误状态
   taskForm.questions.forEach(q => {
     q.hasError = false
     q.isShaking = false
@@ -1171,7 +1144,6 @@ const saveTask = async () => {
   let errorCount = 0
   let firstErrorIndex = -1
 
-  // === 优先级 1：检查题目内容 ===
   taskForm.questions.forEach((q, i) => {
     if (!q.title.trim()) {
       q.hasError = true
@@ -1180,12 +1152,16 @@ const saveTask = async () => {
     }
   })
   if (errorCount > 0) {
-    showToast({message: `题目内容不能为空\n有${errorCount}个题目内容为空`, type: 'fail', duration: 3000,className: 'validation-toast'})
+    showToast({
+      message: `题目内容不能为空\n有${errorCount}个题目内容为空`,
+      type: 'fail',
+      duration: 3000,
+      className: 'validation-toast'
+    })
     scrollToQuestion(firstErrorIndex)
     return
   }
 
-  // === 优先级 2：检查选项内容（仅单选和多选） ===
   errorCount = 0
   firstErrorIndex = -1
   taskForm.questions.forEach((q, i) => {
@@ -1199,12 +1175,16 @@ const saveTask = async () => {
     }
   })
   if (errorCount > 0) {
-    showToast({message: `选项内容不能为空\n有${errorCount}个题目的选项有空`, type: 'fail', duration: 3000,className: 'validation-toast'})
+    showToast({
+      message: `选项内容不能为空\n有${errorCount}个题目的选项有空`,
+      type: 'fail',
+      duration: 3000,
+      className: 'validation-toast'
+    })
     scrollToQuestion(firstErrorIndex)
     return
   }
 
-  // === 优先级 3：检查答案指定情况 ===
   errorCount = 0
   firstErrorIndex = -1
   taskForm.questions.forEach((q, i) => {
@@ -1226,12 +1206,16 @@ const saveTask = async () => {
     }
   })
   if (errorCount > 0) {
-    showToast({message: `需要指定题目的正确答案\n有${errorCount}个题目的答案未指定`, type: 'fail', duration: 3000,className: 'validation-toast'})
+    showToast({
+      message: `需要指定题目的正确答案\n有${errorCount}个题目的答案未指定`,
+      type: 'fail',
+      duration: 3000,
+      className: 'validation-toast'
+    })
     scrollToQuestion(firstErrorIndex)
     return
   }
 
-  // 以下为原有的保存逻辑
   const quiz = taskForm.questions.map(q => ({
     question_id: q.id,
     type: q.type,
@@ -1441,9 +1425,6 @@ const openDetailPanel = async (type, title, targetId, chapterTitle = '') => {
   detailData.uncompletedStudents = uncompletedRecords.map(r => ({name: r.student_name, class_name: r.class_name}))
 }
 
-/**
- * 关闭学情详情面板
- */
 const closeDetailPanel = () => {
   showDetailPanel.value = false
   if (agiRef.value) agiRef.value.togglePanel(false)
@@ -1455,11 +1436,6 @@ const renderedGaiAnalysisText = ref('')
 const isGaiStreaming = ref(false)
 const isGaiDetailLoading = ref(false)
 
-/**
- * 处理人机交互任务点击事件，在非编辑模式下打开预览面板，在编辑模式下打开编辑弹窗
- * @param {Object} gt - 人机交互任务对象
- * @returns {Promise<void>}
- */
 const handleGaiTaskClick = async (gt) => {
   if (isEditMode.value) return openGaiTaskModal(gt)
   currentGaiTask.value = gt
@@ -1477,11 +1453,6 @@ const handleGaiTaskClick = async (gt) => {
   }
 }
 
-/**
- * 选择人机交互任务下的特定学生并加载分析数据
- * @param {string} id - 学生ID
- * @returns {Promise<void>}
- */
 const selectGaiStudent = async (id) => {
   if (isGaiDetailLoading.value) return
   const currentStudent = gaiTaskStudentList.value.find(s => s.id === id)
@@ -1529,12 +1500,6 @@ const startStream = (fullText, targetRef, flagRef) => {
 // ==================== 班级分组逻辑 ====================
 const classExpandedState = reactive({})
 
-/**
- * 将学生数组按班级分组，并保持后端返回的首次出现顺序
- * @param {Array} students - 学生列表数据
- * @param {string} nameKey - 姓名字段名，兼容 'name' 和 'student_name'
- * @returns {Array} 分组后的数组 [{ class_name: string, students: Array }]
- */
 const groupStudentsByClass = (students, nameKey = 'name') => {
   if (!students) return []
   const groupMap = new Map()
@@ -1548,22 +1513,11 @@ const groupStudentsByClass = (students, nameKey = 'name') => {
   return Array.from(groupMap, ([class_name, students]) => ({class_name, students}))
 }
 
-/**
- * 切换班级分组的展开/收起状态
- * @param {string} prefix - 状态前缀 (如 'analysis-', 'completed-')
- * @param {string} className - 班级名称
- */
 const toggleClassExpand = (prefix, className) => {
   const key = `${prefix}${className}`
   classExpandedState[key] = !classExpandedState[key]
 }
 
-/**
- * 获取班级分组的展开状态
- * @param {string} prefix - 状态前缀
- * @param {string} className - 班级名称
- * @returns {boolean} 是否展开
- */
 const isClassExpanded = (prefix, className) => {
   const key = `${prefix}${className}`
   return !!classExpandedState[key]

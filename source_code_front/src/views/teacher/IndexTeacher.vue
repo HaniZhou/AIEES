@@ -104,7 +104,7 @@
       <!-- 右侧 GAI 助手区域 -->
       <div class="right-agi-wrapper">
         <!-- 新增传入 roleSuffix="teacher" -->
-        <AGI ref="gaiRef" class="embedded-agi" roleSuffix="teacher"/>
+        <AGI ref="gaiRef" class="embedded-agi" roleSuffix="teacher" :overlay="false"/>
       </div>
     </div>
   </div>

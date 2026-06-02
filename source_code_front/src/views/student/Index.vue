@@ -74,7 +74,7 @@
       <!-- ================= 右侧 GAI 助手区域 (强制内嵌，高度 90%) ================= -->
       <div class="right-agi-wrapper">
         <!-- 新增传入 roleSuffix="student" -->
-        <GAI ref="gaiRef" class="embedded-agi" roleSuffix="student"/>
+        <GAI ref="gaiRef" class="embedded-agi" roleSuffix="student" :overlay="false"/>
       </div>
     </div>
   </div>

@@ -97,7 +97,6 @@
   max-width: 460px;
   background-color: rgba(255, 255, 255, 0.95);
   backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
   border: 1px solid rgba(255, 255, 255, 0.9);
   border-radius: 24px;
   padding: 40px 32px;
@@ -247,7 +246,6 @@
 /* --- 5. 机构选择弹窗样式 --- */
 .org-popup-overlay {
   backdrop-filter: blur(4px);
-  -webkit-backdrop-filter: blur(4px);
 }
 
 .org-popup-content {

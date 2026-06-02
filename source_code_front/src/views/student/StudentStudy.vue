@@ -73,7 +73,7 @@
         </div>
       </div>
     </div>
-    <GAI ref="gaiRef" roleSuffix="student"/>
+<GAI ref="gaiRef" roleSuffix="student" :overlay="!isGAIMode"/>
   </div>
 </template>
 
