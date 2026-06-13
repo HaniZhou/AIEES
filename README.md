@@ -47,16 +47,6 @@
                                          └───────────────┘
 ```
 
-系统由 **5 个 Docker 容器** 组成：
-| 服务 | 容器名 | 说明 |
-|------|--------|------|
-| `db` | `psql` | PostgreSQL 18 数据库 |
-| `redis` | `redis_server` | Redis 8 缓存与任务队列 |
-| `api` | `fastapi` | FastAPI 后端 API 服务 (占用 8000) |
-| `worker` | `arq_worker` | ARQ 异步任务 Worker（AI 评分、学情分析） |
-| `nginx` | `nginx` | Nginx 反向代理 + 前端静态文件服务 (占用 80) |
-
----
 
 ## 技术栈
 
