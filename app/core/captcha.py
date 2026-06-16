@@ -10,7 +10,7 @@ import logging
 
 from PIL import Image, ImageDraw, ImageFont
 
-logger = logging.getLogger("auth.captcha")
+logger = logging.getLogger(__name__)
 
 # 字体缓存（避免每次请求都扫描文件系统）
 _CACHED_FONT: ImageFont.FreeTypeFont | ImageFont.ImageFont | None = None

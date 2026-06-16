@@ -34,7 +34,7 @@ from app.model.schema.schema import (
 from app.core.response import _success, _error, _created
 
 router = APIRouter()
-admin_route_logger = logging.getLogger("admin.route")
+admin_route_logger = logging.getLogger(__name__)
 
 
 #  管理员：用户与组织管理

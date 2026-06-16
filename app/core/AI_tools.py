@@ -1,36 +1,16 @@
 """ AI related tools live here to avoid circular imports with db.py """
 import asyncio
-import logging
 
 import httpx
 from fastapi import HTTPException, UploadFile, File
 from openai import AsyncOpenAI
 
 from app.Config import Limit, UrlConfig, SecretConfig, Prompt
+from app.core.logging import get_logger
 
-# AI module logger
-logger = logging.getLogger("ai")
-logger.setLevel(logging.WARNING)
-log_file = UrlConfig.LOGS_DIR / "ai.log"
-if not log_file.parent.exists():
-    log_file.parent.mkdir(parents=True, exist_ok=True)
-handler = logging.FileHandler(log_file, encoding="utf-8")
-formatter = logging.Formatter("[%(asctime)s] [%(levelname)s] [ai] %(message)s", datefmt="%Y-%m-%d %H:%M:%S")
-handler.setFormatter(formatter)
-if not logger.handlers:
-    logger.addHandler(handler)
-
-# ASR module logger
-asr_logger = logging.getLogger("asr")
-asr_logger.setLevel(logging.WARNING)
-asr_log_file = UrlConfig.LOGS_DIR / "asr.log"
-if not asr_log_file.parent.exists():
-    asr_log_file.parent.mkdir(parents=True, exist_ok=True)
-asr_handler = logging.FileHandler(asr_log_file, encoding="utf-8")
-asr_formatter = logging.Formatter("[%(asctime)s] [%(levelname)s] [asr] %(message)s", datefmt="%Y-%m-%d %H:%M:%S")
-asr_handler.setFormatter(asr_formatter)
-if not asr_logger.handlers:
-    asr_logger.addHandler(asr_handler)
+# AI module logger（统一写入 app.log，名称格式 "app.core.AI_tools.{子模块}"）
+logger = get_logger(f"{__name__}.ai")
+asr_logger = get_logger(f"{__name__}.asr")
 
 client = AsyncOpenAI(
     base_url=SecretConfig.AI_BASE_URL,

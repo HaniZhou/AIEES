@@ -1,11 +1,16 @@
 from fastapi import FastAPI
+from fastapi.responses import JSONResponse
 from starlette.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
 from fastapi.exceptions import RequestValidationError
 from fastapi import HTTPException
 from app.api.v1 import auth, course, classes, services, student, organizatoin, admin
-from app.Config import UrlConfig, CORSConfig
+from app.Config import UrlConfig, CORSConfig, SecretConfig
 
+# 导入日志配置
+from app.core.logging import configure_logging
+# 导入中间件
+from app.core.middleware import RequestIDMiddleware
 # 导入异常处理器
 from app.core.exceptions import (
     pydantic_validation_exception_handler,
@@ -23,10 +28,37 @@ from app.core.redis_pool import close_redis_pools, init_arq_redis
 from dotenv import load_dotenv
 
 
+def _validate_config():
+    """启动时校验关键配置项是否缺失。"""
+    required = {
+        "SECRET_KEY": SecretConfig.SECRET_KEY,
+        "DB_USER": SecretConfig.DB_USER,
+        "DB_PASSWORD": SecretConfig.DB_PASSWORD,
+        "REDIS_PASSWORD": SecretConfig.REDIS_PASSWORD,
+        "ADMIN_NAME": SecretConfig.ADMIN_NAME,
+        "ADMIN_PASSWORD": SecretConfig.ADMIN_PASSWORD,
+        "AI_BASE_URL": SecretConfig.AI_BASE_URL,
+    }
+
+    missing = [name for name, value in required.items() if value is None]
+    if missing:
+        raise RuntimeError(
+            f"启动失败：以下环境变量未配置: {', '.join(missing)}\n"
+            f"请检查 .env 文件或环境变量设置。"
+        )
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     # ==================== 启动阶段 ====================
     load_dotenv()  # 从项目根目录 /AIEES 启动 FastAPI（ uvicorn app.main:app）， load_dotenv会自动找到同级的 .env 文件
+    
+    # 日志配置必须在最前面
+    configure_logging()
+    
+    # 启动时立即校验配置
+    _validate_config()
+    
     try:
         UrlConfig.init_directories()
     except Exception as e:
@@ -53,6 +85,9 @@ async def lifespan(app: FastAPI):
 
 
 app = FastAPI(lifespan=lifespan)
+
+# 关联 ID Middleware（必须放在最外层，在路由处理之前）
+app.add_middleware(RequestIDMiddleware)
 
 # ==================== 注入全局拦截器 ====================
 # 1. 参数校验拦截器
@@ -82,3 +117,32 @@ app.include_router(student.router, prefix="/api/student", tags=["student"])
 app.include_router(organizatoin.router, prefix="/api/organization")
 
 app.include_router(admin.router, prefix="/api/admin", tags=["admin"])
+
+
+@app.get("/health")
+async def health():
+    """健康检查端点（用于 Docker Compose healthcheck / K8s liveness probe）。"""
+    from app.core.database import async_session_factory
+    from sqlmodel import select
+    from app.core.redis_pool import get_redis
+
+    checks = {"status": "healthy", "db": False, "redis": False}
+
+    # 检查 PostgreSQL
+    try:
+        async with async_session_factory() as session:
+            await session.exec(select(1))
+        checks["db"] = True
+    except Exception as e:
+        checks["status"] = "degraded"
+
+    # 检查 Redis
+    try:
+        redis = get_redis()
+        await redis.ping()
+        checks["redis"] = True
+    except Exception:
+        checks["status"] = "degraded"
+
+    status_code = 200 if checks["status"] == "healthy" else 503
+    return JSONResponse(content=checks, status_code=status_code)

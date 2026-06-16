@@ -17,16 +17,17 @@ from app.crud.db import (
     db_update_course_teaching_analysis
 )
 from app.Config import Prompt, SecretConfig, UrlConfig
+from app.core.logging import get_logger
 import uuid
+
 # 任务队列日志
-job_logger = logging.getLogger("arq_jobs")
-job_logger.setLevel(logging.INFO)
-# 任务队列日志
-job_logger = logging.getLogger("arq_jobs")
+job_logger = get_logger(__name__)
 job_logger.setLevel(logging.INFO)
 
 async def startup(ctx):
     """ ARQ Worker 启动时的初始化 """
+    from app.core.logging import configure_logging
+    configure_logging()
     ctx['redis'] = await create_pool(RedisSettings(host=UrlConfig.REDIS_HOST, port=UrlConfig.REDIS_PORT, password=SecretConfig.REDIS_PASSWORD))
 
 async def shutdown(ctx):

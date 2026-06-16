@@ -25,7 +25,7 @@ from app.Config import SecretConfig
 from app.core.response import _success, _error, _created
 
 router = APIRouter()
-auth_route_logger = logging.getLogger("auth.route")
+auth_route_logger = logging.getLogger(__name__)
 
 #  验证码接口 
 

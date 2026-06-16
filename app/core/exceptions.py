@@ -4,51 +4,41 @@ from fastapi import Request
 from fastapi.responses import JSONResponse
 from fastapi import HTTPException
 from fastapi.exceptions import RequestValidationError
-from app import Config
-from datetime import datetime
+from app.core.logging import get_logger
 
-#  日志格式化工具 
-class StrictFormatter(logging.Formatter):
-    def format(self, record):
-        record.asctime = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-        return f"[{record.asctime}] [{record.levelname}] [{record.module}] {record.getMessage()}"
 
-# 使用缓存防止重复创建 Handler
-_logger_cache: dict[str, logging.Logger] = {}
+# 统一日志记录工具
+def _log_exception(logger: logging.Logger, message: str, exc: BaseException | None = None):
+    """安全记录异常：只记录异常类型和消息，不记录敏感参数。"""
+    if exc:
+        safe_msg = f"{message} | Type: {type(exc).__name__}"
+        logger.error(safe_msg, exc_info=True)
+    else:
+        logger.error(message)
 
 
 # 纯业务异常定义
 class AppBusinessException(Exception):
-    """业务阻断异常：仅用于表达业务规则拒绝(404/403/400)。严禁用于表达系统故障。"""
+    """业务阻断异常。
+    code 参数必须使用真实 HTTP 状态码:
+        400 - 参数错误/业务冲突
+        403 - 无权限
+        404 - 资源不存在
+        409 - 资源冲突（如已提交过答案）
+        429 - 频率限制
+        500 - 系统内部错误
+        502 - 上游服务错误
+    """
     def __init__(self, code: int, message: str, log_module: str = "db"):
+        assert code in (400, 403, 404, 409, 429, 500, 502), \
+            f"业务异常 code 必须为 HTTP 状态码，收到: {code}"
         self.code = code
         self.message = message
         self.log_module = log_module
 
-def _setup_logger(module_name: str) -> logging.Logger:
-    """函数目的：根据模块名获取或创建对应的文件 Logger，确保日志物理隔离。
-    参数信息：- module_name: str，日志模块名（如 'db', 'ai'），对应文件为 {module_name}.log。
-    返回值：logging.Logger 实例。
-    """
-    if module_name in _logger_cache:
-        return _logger_cache[module_name]
-
-    logger = logging.getLogger(module_name)
-    logger.setLevel(logging.ERROR)
-    if not logger.handlers:
-        log_file = Config.UrlConfig.LOGS_DIR / f"{module_name}.log"
-        if not log_file.parent.exists():
-            log_file.parent.mkdir(parents=True, exist_ok=True)
-        handler = logging.FileHandler(log_file, encoding="utf-8")
-        handler.setFormatter(StrictFormatter())
-        logger.addHandler(handler)
-
-    _logger_cache[module_name] = logger
-    return logger
-
-# 预置系统与上游日志器
-system_logger = _setup_logger("system")
-upstream_logger = _setup_logger("upstream")
+# 预置业务日志器（统一写入 app.log，通过名称区分模块）
+system_logger = get_logger("biz.system")
+upstream_logger = get_logger("biz.upstream")
 
 #  Pydantic 参数校验拦截
 async def pydantic_validation_exception_handler(request: Request, exc: RequestValidationError):
@@ -56,11 +46,25 @@ async def pydantic_validation_exception_handler(request: Request, exc: RequestVa
     参数信息：- request: Request, - exc: RequestValidationError
     返回值：JSONResponse
     """
-    first_error = exc.errors()[0] if exc.errors() else {}
-    msg = first_error.get("msg", "参数格式错误")
+    errors = exc.errors()
+    error_list = []
+    for err in errors:
+        error_list.append({
+            "loc": err.get("loc", []),
+            "msg": err.get("msg", "参数格式错误"),
+            "type": err.get("type", "unknown"),
+        })
+    # 取第一个错误作为主消息
+    first_msg = error_list[0]["msg"] if error_list else "参数格式错误"
     return JSONResponse(
-        status_code=200,
-        content={"code": 400, "message": msg, "data": {}}
+        status_code=400,  # 改为 400（之前是 200）
+        content={
+            "code": 400,
+            "message": first_msg,
+            "data": {
+                "errors": error_list,
+            }
+        }
     )
 
 #  业务异常拦截（AppBusinessException）
@@ -73,12 +77,14 @@ async def app_business_exception_handler(request: Request, exc):
     message = getattr(exc, "message", "业务处理失败")
     log_module = getattr(exc, "log_module", "system")
 
-    # 动态路由到具体的业务日志文件
-    target_logger = _setup_logger(log_module)
-    target_logger.error(f"Path: {request.url.path} | Biz Reject: [{code}] {message}")
+    # 路由到对应业务日志器（统一写入 app.log，名称格式 "biz.{模块名}"）
+    target_logger = get_logger(f"biz.{log_module}")
+    _log_exception(target_logger, f"Path: {request.url.path} | Biz Reject: [{code}] {message}", exc)
 
+    # 使用真实 HTTP 状态码
+    http_status = code if code in (400, 403, 404, 409, 429, 500, 502) else 400
     return JSONResponse(
-        status_code=200,  # 规范：业务错误统一 HTTP 200，错误码放在 JSON body
+        status_code=http_status,
         content={"code": code, "message": message, "data": {}}
     )
 
@@ -99,21 +105,20 @@ async def http_exception_handler(request: Request, exc: HTTPException):
 
     # 500/502：系统错误，记日志，返回安全提示
     if status_code in (500, 502):
-        log_msg = f"Path: {request.url.path} | Error: {exc.detail}"
-        if status_code == 502:
-            upstream_logger.error(log_msg)
-        else:
-            system_logger.error(log_msg)
         safe_message = "上游服务暂时不可用" if status_code == 502 else "服务器内部错误"
+        target = upstream_logger if status_code == 502 else system_logger
+        _log_exception(target, f"Path: {request.url.path} | HTTP {status_code}: {exc.detail}", exc)
         return JSONResponse(
             status_code=status_code,
             content={"code": status_code, "message": safe_message, "data": {}}
         )
 
-    # 其他 HTTP 错误
+    # 其他 HTTP 错误：返回安全消息，不泄漏 exc.detail
+    _log_exception(system_logger, f"Path: {request.url.path} | HTTP {status_code}: {exc.detail}", exc)
+    safe_message = f"请求错误 ({status_code})"
     return JSONResponse(
         status_code=status_code,
-        content={"code": status_code, "message": exc.detail, "data": {}}
+        content={"code": status_code, "message": safe_message, "data": {}}
     )
 
 #  4. 兜底系统异常拦截 
@@ -122,9 +127,10 @@ async def global_system_exception_handler(request: Request, exc: Exception):
     参数信息：- request: Request, - exc: Exception
     返回值：JSONResponse
     """
-    log_msg = f"Path: {request.url.path} | Uncaught Exception: {str(exc)}"
-    system_logger.error(log_msg)
+    safe_message = "服务器内部错误"
+    # 记录异常类型和路径，不记录 str(exc) 以防敏感信息泄漏
+    _log_exception(system_logger, f"Path: {request.url.path} | Uncaught Exception", exc)
     return JSONResponse(
         status_code=500,
-        content={"code": 500, "message": "服务器内部错误", "data": {}}
+        content={"code": 500, "message": safe_message, "data": {}}
     )

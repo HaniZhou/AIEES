@@ -9,7 +9,7 @@ from app.core.security import require_student_or_teacher
 from app.model.schema.schema import TokenData
 from app.core.redis_pool import get_redis
 
-logger = logging.getLogger("auth.rate_limiter")
+logger = logging.getLogger(__name__)
 
 #  Redis Key
 CAPTCHA_KEY_PREFIX = "auth:captcha:"

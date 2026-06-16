@@ -3,12 +3,19 @@
 # 定义持久化数据卷
 volumes:
   postgres_data:
+    name: aiees_postgres_data
   redis_data:
+    name: aiees_redis_data
+
+networks:
+  network_core:
+    name: aiees_network_core
+    driver: bridge
 
 services:
   # ==============================
   # 1. 数据库服务 (Postgres)
-  # ==============================
+  # 数据库是性能核心，优先保证资源分配和稳定性（40%）
   db:
     image: postgres:18.3
     container_name: psql
@@ -20,34 +27,52 @@ services:
       - postgres_data:/var/lib/postgresql
     restart: unless-stopped
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER}"]
+      test: [ "CMD-SHELL", "pg_isready -U ${POSTGRES_USER}" ]
       interval: 10s
       timeout: 5s
       retries: 5
     networks:
-      - network1
+      - network_core
+    logging:
+      driver: "local"
+      options:
+        max-size: "50m"
+        max-file: "5"
+        compress: "true"
+    cpu_shares: 2048               # 高优先级
+    mem_reservation: 4g            # 保证 4GB
+    mem_limit: 16g                 # 安全上限 (应对内存泄漏)
 
   # ==============================
   # 2. 缓存/任务队列服务 (Redis)
-  # ==============================
+  # Redis 作为缓存和任务队列，资源需求较高但次于数据库，优先保证内存分配和稳定性（20%）
   redis:
     image: redis:8.4.2-alpine
-    container_name: redis_server
-    command: redis-server --appendonly yes --requirepass ${REDIS_PASSWORD} --maxmemory 500mb --maxmemory-policy allkeys-lru
+    container_name: redis_server  # 在env中配置redis最大内存
+    command: redis-server --appendonly yes --requirepass ${REDIS_PASSWORD} --maxmemory 8gb --maxmemory-policy allkeys-lru
     volumes:
       - redis_data:/data
     restart: unless-stopped
     healthcheck:
-      test: ["CMD", "redis-cli", "-a", "${REDIS_PASSWORD}", "ping"]
+      test: [ "CMD", "redis-cli", "-a", "${REDIS_PASSWORD}", "ping" ]
       interval: 10s
       timeout: 5s
       retries: 5
     networks:
-      - network1
+      - network_core
+    logging:
+      driver: "local"
+      options:
+        max-size: "50m"
+        max-file: "5"
+        compress: "true"
+    cpu_shares: 1536               # 次高优先级
+    mem_reservation: 2g
+    mem_limit: 8g
 
   # ==============================
   # 3. Web API 服务
-  # ==============================
+  # Web API 需要保证响应速度和稳定性，优先保证 CPU 和内存分配（20%）
   api:
     build: .
     container_name: fastapi
@@ -69,6 +94,8 @@ services:
       - SECRET_KEY=${SECRET_KEY}
       - BASE_URL=${BASE_URL}
       - API_KEY=${API_KEY}
+      - CORS_ORIGINS=${CORS_ORIGINS}
+      - LOG_LEVEL=${LOG_LEVEL}
     volumes:
       - ./static/uploads:/app/static/uploads
       - ./logs:/app/logs
@@ -77,17 +104,32 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
+    healthcheck:
+      test: [ "CMD", "curl", "-f", "http://localhost:8000/health" ]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
     restart: unless-stopped
     networks:
-      - network1
+      - network_core
+    logging:
+      driver: "local"
+      options:
+        max-size: "50m"
+        max-file: "5"
+        compress: "true"
+    cpu_shares: 1024   # 默认优先级
+    mem_reservation: 2g
+    mem_limit: 8g
 
   # ==============================
   # 4. ARQ Worker 服务
-  # ==============================
+  # Worker 需要保证任务处理的稳定性和效率，优先保证内存分配和适当的 CPU 资源（20%）
   worker:
     build: .
     container_name: arq_worker
-    command: ["arq", "app.core.arq_jobs.WorkerSettings"]
+    command: [ "arq", "app.core.arq_jobs.WorkerSettings" ]
     environment:
       - DATABASE_URL=postgresql+asyncpg://${DB_USER}:${DB_PASSWORD}@${DB_HOST}:${DB_PORT}/${DB_NAME}
       - REDIS_URL=redis://:${REDIS_PASSWORD}@${REDIS_HOST}:${REDIS_PORT}/0
@@ -113,11 +155,21 @@ services:
         condition: service_healthy
     restart: unless-stopped
     networks:
-      - network1
+      - network_core
+    logging:
+      driver: "local"
+      options:
+        max-size: "50m"
+        max-file: "5"
+        compress: "true"
+    # 修正后的资源配置
+    cpu_shares: 512                # 较低优先级
+    mem_reservation: 2g
+    mem_limit: 16g                 # Worker 允许更大内存
 
   # ==============================
   # 5. Nginx 代理与静态文件服务
-  # ==============================
+  # Nginx 主要负责静态文件服务和反向代理，资源需求较低，优先保证稳定性和适当的 CPU 资源（10%）
   nginx:
     image: nginx:mainline-alpine3.23
     container_name: nginx
@@ -133,9 +185,13 @@ services:
       - api
     restart: unless-stopped
     networks:
-      - network1
-
-
-networks:
-  network1:
-    driver: bridge
+      - network_core
+    logging:
+      driver: "local"
+      options:
+        max-size: "50m"
+        max-file: "5"
+        compress: "true"
+    cpu_shares: 256                # 最低优先级
+    mem_reservation: 256m
+    mem_limit: 1g

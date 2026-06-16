@@ -7,12 +7,10 @@ from app.model.schema.schema import ScenarioType
 
 
 class CORSConfig:
-    cors_allow_origins = [
-        "http://localhost:5173",
-        "http://127.0.0.1:5173",
-        "http://localhost:4173",
-        "http://127.0.0.1:4173",
-    ]
+    # 从环境变量读取，多个 origin 用逗号分隔
+    cors_origins_str = os.getenv("CORS_ORIGINS", "http://localhost:5173,http://127.0.0.1:5173")
+    cors_allow_origins = [o.strip() for o in cors_origins_str.split(",") if o.strip()]
+
     cors_allow_methods = ["GET",
                           "POST",
                           "OPTIONS",
@@ -24,7 +22,8 @@ class CORSConfig:
                           "Authorization",
                           "Accept",
                           "Origin",
-                          "X-Requested-With", ]
+                          "X-Requested-With",
+                           "X-Request-Id", ]
 
 
 class SecretConfig:

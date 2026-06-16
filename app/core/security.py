@@ -13,8 +13,8 @@ from app.crud.db import db_get_user_info
 from app.model.schema.schema import TokenData, UserPublish, RoleType, PhaseType
 from app.Config import SecretConfig
 
-#  日志配置 
-auth_logger = logging.getLogger("auth")
+#  日志配置
+auth_logger = logging.getLogger(__name__)
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/auth/token")
 password_hash = PasswordHash.recommended()
