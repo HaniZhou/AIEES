@@ -259,7 +259,7 @@ const handleStartGaiTask = (task) => {
     promptText: promptText,
     courseId: courseId,
     taskId: task.id,
-    apiUrl: '/services/chat/stream/gai_chat'
+    apiUrl: '/service/chat/stream/gai_chat'
   })
 }
 

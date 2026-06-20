@@ -1,31 +1,42 @@
-from fastapi import FastAPI
+from contextlib import asynccontextmanager
+
+#
+from dotenv import load_dotenv
+from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 from starlette.middleware.cors import CORSMiddleware
-from contextlib import asynccontextmanager
-from fastapi.exceptions import RequestValidationError
-from fastapi import HTTPException
-from app.api.v1 import auth, course, classes, services, student, organizatoin, admin
-from app.Config import UrlConfig, CORSConfig, SecretConfig
+
+from app.api.v1.admin import router as admin_router
+from app.api.v1.auth import router as auth_router
+from app.api.v1.classes import router as classes_router
+from app.api.v1.course import router as course_router
+from app.api.v1.organization import router as organization_router
+from app.api.v1.service import router as services_router
+from app.api.v1.student import router as student_router
+
+# 导入异常处理器
+# 导入业务异常类
+from app.core.exceptions import (
+    AppBusinessException,
+    app_business_exception_handler,
+    global_system_exception_handler,
+    http_exception_handler,
+    pydantic_validation_exception_handler,
+)
+from app.core.config import CORSConfig, SecretConfig, UrlConfig
+
+# 导入连接池预热
+from app.core.database import engine, warmup_connection_pool
 
 # 导入日志配置
 from app.core.logging import configure_logging
+
 # 导入中间件
 from app.core.middleware import RequestIDMiddleware
-# 导入异常处理器
-from app.core.exceptions import (
-    pydantic_validation_exception_handler,
-    app_business_exception_handler,
-    http_exception_handler,
-    global_system_exception_handler
-)
-# 导入业务异常类
-from app.crud.db import AppBusinessException
-# 导入连接池预热
-from app.core.database import warmup_connection_pool, engine
+
 # 导入 Redis 连接池关闭
-from app.core.redis_pool import close_redis_pools, init_arq_redis
-#
-from dotenv import load_dotenv
+from app.core.redis import close_redis_pools
+from fastapi import FastAPI, HTTPException
 
 
 def _validate_config():
@@ -42,24 +53,22 @@ def _validate_config():
 
     missing = [name for name, value in required.items() if value is None]
     if missing:
-        raise RuntimeError(
-            f"启动失败：以下环境变量未配置: {', '.join(missing)}\n"
-            f"请检查 .env 文件或环境变量设置。"
-        )
+        raise RuntimeError(f"启动失败：以下环境变量未配置: {', '.join(missing)}\n请检查 .env 文件或环境变量设置。")
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     # ==================== 启动阶段 ====================
     load_dotenv()  # 从项目根目录 /AIEES 启动 FastAPI（ uvicorn app.main:app）， load_dotenv会自动找到同级的 .env 文件
-    
+
     # 日志配置必须在最前面
     configure_logging()
-    
+
     # 启动时立即校验配置
     _validate_config()
-    
+
     try:
+        print("正在创建必要的目录...")
         UrlConfig.init_directories()
     except Exception as e:
         print(f"无法创建必要的目录，请检查权限！详情: {e}")
@@ -67,13 +76,6 @@ async def lifespan(app: FastAPI):
 
     # 预热连接池，确保 asyncpg 连接就绪
     await warmup_connection_pool()
-
-    # 执行建表与灌初始数据
-    from app.crud.db import create_bd_and_table
-    await create_bd_and_table()
-
-    # 初始化 ARQ 任务队列专用 Redis 连接池
-    await init_arq_redis()
 
     yield
 
@@ -109,22 +111,23 @@ app.add_middleware(
     max_age=600,
 )
 
-app.include_router(auth.router, prefix="/api/auth")
-app.include_router(course.router, prefix="/api/course")
-app.include_router(classes.router, prefix="/api/classes")
-app.include_router(services.router, prefix="/api/services", tags=["services"])
-app.include_router(student.router, prefix="/api/student", tags=["student"])
-app.include_router(organizatoin.router, prefix="/api/organization")
+app.include_router(auth_router, prefix="/api/auth")
+app.include_router(course_router, prefix="/api/course")
+app.include_router(classes_router, prefix="/api/classes")
+app.include_router(services_router, prefix="/api/service", tags=["service"])
+app.include_router(student_router, prefix="/api/student", tags=["student"])
+app.include_router(organization_router, prefix="/api/organization")
 
-app.include_router(admin.router, prefix="/api/admin", tags=["admin"])
+app.include_router(admin_router, prefix="/api/admin", tags=["admin"])
 
 
 @app.get("/health")
 async def health():
     """健康检查端点（用于 Docker Compose healthcheck / K8s liveness probe）。"""
-    from app.core.database import async_session_factory
     from sqlmodel import select
-    from app.core.redis_pool import get_redis
+
+    from app.core.database import async_session_factory
+    from app.core.redis import get_redis
 
     checks = {"status": "healthy", "db": False, "redis": False}
 
@@ -133,7 +136,7 @@ async def health():
         async with async_session_factory() as session:
             await session.exec(select(1))
         checks["db"] = True
-    except Exception as e:
+    except Exception:
         checks["status"] = "degraded"
 
     # 检查 Redis

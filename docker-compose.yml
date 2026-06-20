@@ -18,13 +18,13 @@ services:
   # 数据库是性能核心，优先保证资源分配和稳定性（40%）
   db:
     image: postgres:18.3
-    container_name: psql
+    container_name: aiees_psql
     environment:
       POSTGRES_USER: ${POSTGRES_USER}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
       POSTGRES_DB: ${POSTGRES_DB}
     volumes:
-      - postgres_data:/var/lib/postgresql
+      - postgres_data:/var/lib/postgresql  # 不要手动创建 /var/lib/postgresql/data 目录：postgres18新版镜像会自动创建版本化子目录
     restart: unless-stopped
     healthcheck:
       test: [ "CMD-SHELL", "pg_isready -U ${POSTGRES_USER}" ]
@@ -48,13 +48,15 @@ services:
   # Redis 作为缓存和任务队列，资源需求较高但次于数据库，优先保证内存分配和稳定性（20%）
   redis:
     image: redis:8.4.2-alpine
-    container_name: redis_server  # 在env中配置redis最大内存
-    command: redis-server --appendonly yes --requirepass ${REDIS_PASSWORD} --maxmemory 8gb --maxmemory-policy allkeys-lru
+    container_name: aiees_redis  # 在env中配置redis最大内存 建议 maxmemory 设为 mem_limit 的 70%~80%
+    command: redis-server --appendonly yes --requirepass ${REDIS_PASSWORD} --maxmemory 6gb --maxmemory-policy allkeys-lru
+    environment:
+      - REDISCLI_AUTH=${REDIS_PASSWORD}
     volumes:
       - redis_data:/data
     restart: unless-stopped
     healthcheck:
-      test: [ "CMD", "redis-cli", "-a", "${REDIS_PASSWORD}", "ping" ]
+      test: ["CMD", "redis-cli", "ping"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -74,31 +76,19 @@ services:
   # 3. Web API 服务
   # Web API 需要保证响应速度和稳定性，优先保证 CPU 和内存分配（20%）
   api:
-    build: .
-    container_name: fastapi
+    build:
+      context: .
+      dockerfile: fastapi/Dockerfile
+    image: aiees/api:${VERSION:-latest}
+    container_name: aiees_api
+    env_file: .env
     expose:
       - "8000"
     environment:
       - DATABASE_URL=postgresql+asyncpg://${DB_USER}:${DB_PASSWORD}@${DB_HOST}:${DB_PORT}/${DB_NAME}
       - REDIS_URL=redis://:${REDIS_PASSWORD}@${REDIS_HOST}:${REDIS_PORT}/0
-      - REDIS_HOST=${REDIS_HOST}
-      - REDIS_PORT=${REDIS_PORT}
-      - DB_HOST=${DB_HOST}
-      - DB_PORT=${DB_PORT}
-      - DB_NAME=${DB_NAME}
-      - DB_USER=${DB_USER}
-      - DB_PASSWORD=${DB_PASSWORD}
-      - REDIS_PASSWORD=${REDIS_PASSWORD}
-      - ADMIN_NAME=${ADMIN_NAME}
-      - ADMIN_PASSWORD=${ADMIN_PASSWORD}
-      - SECRET_KEY=${SECRET_KEY}
-      - BASE_URL=${BASE_URL}
-      - API_KEY=${API_KEY}
-      - CORS_ORIGINS=${CORS_ORIGINS}
-      - LOG_LEVEL=${LOG_LEVEL}
     volumes:
       - ./static/uploads:/app/static/uploads
-      - ./logs:/app/logs
     depends_on:
       db:
         condition: service_healthy
@@ -124,30 +114,18 @@ services:
     mem_limit: 8g
 
   # ==============================
-  # 4. ARQ Worker 服务
+  # 4. Taskiq Worker 服务
   # Worker 需要保证任务处理的稳定性和效率，优先保证内存分配和适当的 CPU 资源（20%）
   worker:
-    build: .
-    container_name: arq_worker
-    command: [ "arq", "app.core.arq_jobs.WorkerSettings" ]
+    build:
+      context: .
+      dockerfile: fastapi/Dockerfile
+    image: aiees/worker:${VERSION:-latest}
+    command: ["taskiq", "worker", "app.task.broker:broker", "app.task"]
+    env_file: .env
     environment:
       - DATABASE_URL=postgresql+asyncpg://${DB_USER}:${DB_PASSWORD}@${DB_HOST}:${DB_PORT}/${DB_NAME}
       - REDIS_URL=redis://:${REDIS_PASSWORD}@${REDIS_HOST}:${REDIS_PORT}/0
-      - REDIS_HOST=${REDIS_HOST}
-      - REDIS_PORT=${REDIS_PORT}
-      - DB_HOST=${DB_HOST}
-      - DB_PORT=${DB_PORT}
-      - DB_NAME=${DB_NAME}
-      - DB_USER=${DB_USER}
-      - DB_PASSWORD=${DB_PASSWORD}
-      - REDIS_PASSWORD=${REDIS_PASSWORD}
-      - ADMIN_NAME=${ADMIN_NAME}
-      - ADMIN_PASSWORD=${ADMIN_PASSWORD}
-      - SECRET_KEY=${SECRET_KEY}
-      - BASE_URL=${BASE_URL}
-      - API_KEY=${API_KEY}
-    volumes:
-      - ./logs:/app/logs
     depends_on:
       db:
         condition: service_healthy
@@ -168,6 +146,36 @@ services:
     mem_limit: 16g                 # Worker 允许更大内存
 
   # ==============================
+  # 4.1 Taskiq Scheduler 服务
+  scheduler:
+    build:
+      context: .
+      dockerfile: fastapi/Dockerfile
+    image: aiees/scheduler:${VERSION:-latest}
+    command: ["taskiq", "scheduler", "app.task.scheduler:scheduler", "app.task"]
+    env_file: .env
+    environment:
+      - DATABASE_URL=postgresql+asyncpg://${DB_USER}:${DB_PASSWORD}@${DB_HOST}:${DB_PORT}/${DB_NAME}
+      - REDIS_URL=redis://:${REDIS_PASSWORD}@${REDIS_HOST}:${REDIS_PORT}/0
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+    networks:
+      - network_core
+    logging:
+      driver: "local"
+      options:
+        max-size: "50m"
+        max-file: "5"
+        compress: "true"
+    cpu_shares: 256
+    mem_reservation: 512m
+    mem_limit: 1g
+
+  # ==============================
   # 5. Nginx 代理与静态文件服务
   # Nginx 主要负责静态文件服务和反向代理，资源需求较低，优先保证稳定性和适当的 CPU 资源（10%）
   nginx:
@@ -178,11 +186,11 @@ services:
     volumes:
       - ./frontend/dist:/var/www/frontend:ro
       - ./static/uploads:/var/www/static/uploads:ro
-      - ./nginx.conf:/etc/nginx/nginx.conf:ro
-      - ./logs/nginx:/var/log/nginx
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
       - /dev/null:/etc/nginx/conf.d/default.conf
     depends_on:
-      - api
+      api:
+        condition: service_healthy
     restart: unless-stopped
     networks:
       - network_core

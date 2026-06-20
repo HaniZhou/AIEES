@@ -31,7 +31,7 @@ source_code_front/
 │   │   ├── auth.js             # 认证接口
 │   │   ├── classes.js          # 班级接口
 │   │   ├── course.js           # 课程接口
-│   │   ├── services.js         # AI 服务接口
+│   │   ├── service.js         # AI 服务接口
 │   │   ├── student.js          # 学生端接口
 │   │   └── utils.js            # 请求工具 (Axios 实例)
 │   ├── components/             # 通用组件

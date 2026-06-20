@@ -1,15 +1,48 @@
-.git
-.gitignore
-__pycache__
+# === Python 虚拟环境（最关键！）===
+.venv/
+venv/
+env/
+
+# === Python 缓存 ===
+__pycache__/
 *.pyc
 *.pyo
 *.pyd
-.Python
-env/
-venv/
-.env
-.venv
-logs/
-static/uploads/
-tests/
 .pytest_cache/
+.coverage
+htmlcov/
+
+# === 前端源码及依赖（Nginx 用的是 frontend/dist，不需要源码）===
+source_code_front/
+
+# === IDE / 编辑器 ===
+.idea/
+.vscode/
+.DS_Store
+
+# === Git ===
+.git/
+.gitignore
+
+# === 运行时文件 ===
+logs/
+*.log
+
+# === 用户上传文件（运行时挂载，不该进镜像）===
+static/uploads/
+
+# === 测试 ===
+app/test/
+
+# === Docker 自身文件 ===
+Dockerfile*
+docker-compose*.yml
+.dockerignore
+
+# === 文档 ===
+*.md
+README*
+
+# === 环境变量（敏感信息）===
+.env
+.env.*

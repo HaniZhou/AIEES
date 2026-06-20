@@ -1,4 +1,4 @@
 /.venv/
-/tests/
+/app/test/
 /frontend/dist/
 /logs/

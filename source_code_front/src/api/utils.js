@@ -1,4 +1,4 @@
-// src/api/utils.js
+// src/api/common.js
 import request from "../utils/request";
 
 /**

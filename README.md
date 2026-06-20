@@ -40,11 +40,14 @@
             │  (主数据库)   │              │  (缓存/队列)   │
             └──────────────┘              └──────┬───────┘
                                                  │
-                                         ┌───────▼───────┐
-                                         │  ARQ Worker    │
-                                         │  (异步任务队列)  │
-                                         │  AI 评分/分析   │
-                                         └───────────────┘
+                                          ┌───────▼───────┐
+                                          │  Taskiq Worker │
+                                          │  (异步任务队列)  │
+                                          │  AI 评分/分析   │
+                                          ├───────────────┤
+                                          │Taskiq Scheduler│
+                                          │  (定时任务)     │
+                                          └───────────────┘
 ```
 
 
@@ -54,7 +57,7 @@
 - **框架**: Python 3.14, FastAPI, Uvicorn/Gunicorn
 - **ORM**: SQLModel + SQLAlchemy + asyncpg
 - **数据库**: PostgreSQL 18
-- **缓存/队列**: Redis 8 + ARQ
+- **缓存/队列**: Redis 8 + Taskiq
 - **AI 集成**: OpenAI API (兼容接口)
 - **认证**: JWT (PyJWT)
 - **文件处理**: Pillow, python-multipart, aiofiles
@@ -131,13 +134,33 @@ docker compose up -d
 
 首次启动会构建后端镜像，耗时约 5-10 分钟。
 
-### 5. 验证部署
+### 5. 初始化数据库
+
+首次部署或数据库表结构变更后，需手动执行建表和初始数据写入：
+
+```bash
+# 进入 API 容器执行
+docker compose exec api python -m app.infra.scripts.init_db
+
+# 或本地开发时直接运行
+python -m app.infra.scripts.init_db
+```
+
+执行成功会显示：
+```
+✓ 数据表创建完成
+✓ 初始数据写入完成
+```
+
+> **说明**：该脚本使用 `CREATE TABLE IF NOT EXISTS`，可安全重复执行，不会覆盖已有数据。
+
+### 6. 验证部署
 
 - **前端页面**: http://localhost
 - **后端 API**: http://localhost/api/ （通过 Nginx 代理）
 - **Swagger 文档**: 默认不对外暴露，如需访问，在 `docker-compose.yml` 的 `api` 服务中添加 `ports: - "8000:8000"`，然后访问 `http://localhost:8000/docs`
 
-> ⚠️ **首次登录**：系统启动后会自动创建管理员账号，账号信息在 `.env` 文件中配置：
+> ⚠️ **首次登录**：执行初始化脚本后，系统会自动创建管理员账号，账号信息在 `.env` 文件中配置：
 > - **账号**: `ADMIN_NAME` 的值（默认 `Admin`）
 > - **密码**: `ADMIN_PASSWORD` 的值
 > 
@@ -146,9 +169,9 @@ docker compose up -d
 > ADMIN_NAME=你的管理员账号
 > ADMIN_PASSWORD=你的管理员密码
 > ```
-> 修改后需要重新构建镜像才能生效：`docker compose up -d --build`
+> 修改后需重新执行初始化脚本：`docker compose exec api python -m app.infra.scripts.init_db`
 
-### 6. 查看日志
+### 7. 查看日志
 
 ```bash
 # 查看所有服务日志
@@ -159,7 +182,7 @@ docker compose logs -f api
 docker compose logs -f worker
 ```
 
-### 7. 停止服务
+### 8. 停止服务
 
 ```bash
 docker compose down
@@ -236,8 +259,8 @@ docker compose restart nginx
 
 | 变量 | 说明 | 默认值 |
 |------|------|--------|
-| `VITE_API_BASE_URL` | API 请求基础地址 | `http://127.0.0.1:8000/api` |
-| `VITE_RESOURCE_BASE_URL` | 静态资源基础地址 | `http://127.0.0.1:8000/api` |
+| `VITE_API_BASE_URL` | API 请求基础地址 | `/api`（开发）/ `http://localhost/api`（生产） |
+| `VITE_RESOURCE_BASE_URL` | 静态资源基础地址 | `/api`（开发）/ `http://localhost/api`（生产） |
 
 > **安全提醒**: 生产环境部署前，请务必修改以下默认值：
 > - `ADMIN_NAME` / `ADMIN_PASSWORD` — 管理员账号密码
@@ -259,26 +282,35 @@ AIEES/
 │   │   ├── services.py           # AI 服务接口
 │   │   ├── student.py            # 学生端接口
 │   │   ├── organizatoin.py       # 组织接口
+│   │   ├── dependencies.py       # 公共依赖项（角色验证等）
 │   │   └── admin.py              # 管理员接口
 │   ├── core/                     # 核心功能
 │   │   ├── database.py           # 数据库引擎
-│   │   ├── redis_pool.py         # Redis 连接池
-│   │   ├── arq_jobs.py           # ARQ 异步任务
+│   │   ├── redis.py              # Redis 连接池
+│   │   ├── config.py             # 全局配置
 │   │   ├── security.py           # JWT/密码安全
+│   │   ├── logging.py            # 日志配置
+│   │   ├── middleware.py         # 中间件
 │   │   ├── captcha.py            # 验证码
 │   │   ├── rate_limiter.py       # 限流
 │   │   ├── exceptions.py         # 异常处理
 │   │   ├── response.py           # 统一响应
 │   │   ├── tools.py              # AI 调用工具
 │   │   └── formatters.py         # 格式化工具
+│   ├── infra/                    # 基础设施层
+│   │   └── scripts/              # 运维脚本
+│   │       ├── init_db.py        # 建表 + 初始数据
+│   │       └── init_data.py      # 管理员数据生成
 │   ├── crud/                     # 数据库操作
 │   │   └── db.py                 # 数据访问层
 │   ├── model/
 │   │   ├── tables/models.py      # 数据库表模型
 │   │   └── schema/               # Pydantic 校验模型
-│   ├── Config.py                 # 全局配置
 │   ├── main.py                   # FastAPI 入口
-│   └── start_worker.py           # Worker 启动
+│   └── task/                     # Taskiq 任务队列
+│       ├── broker.py             # 任务 Broker
+│       ├── scheduler.py          # 定时调度器
+│       └── job/                  # 任务实现
 │
 ├── source_code_front/            # 前端 Vue 源码
 │   ├── src/
@@ -311,9 +343,13 @@ AIEES/
 │
 ├── .env                          # 环境变量配置
 ├── docker-compose.yml            # Docker Compose 编排
-├── Dockerfile                    # 后端镜像构建
-├── nginx.conf                    # Nginx 配置
-├── requirements.txt              # Python 依赖
+├── docker-compose.dev.yml        # 开发环境覆盖配置
+├── fastapi/                      # 后端 Docker 构建
+│   ├── Dockerfile                # 后端镜像构建
+│   └── requirements.txt          # Python 依赖
+├── nginx/                        # Nginx 配置目录
+│   ├── nginx.conf                # 生产 Nginx 配置
+│   └── nginx.dev.conf            # 开发 Nginx 配置
 └── README.md                     # 本文件
 ```
 
@@ -355,7 +391,7 @@ docker compose logs db
 
 ### Q: 如何修改上传文件大小限制？
 
-编辑 `app/Config.py` 中的 `Limit` 类，然后重启 API 服务：
+编辑 `app/core/config.py` 中的 `Limit` 类，然后重启 API 服务：
 
 ```python
 class Limit:
@@ -363,7 +399,7 @@ class Limit:
     MAX_PDF_SIZE: int = 50 * 1024 * 1024     # 50MB
 ```
 
-同时修改 `nginx.conf` 中的 `client_max_body_size 500M;`。
+同时修改 `nginx/nginx.conf` 中的 `client_max_body_size 500M;`。
 
 ### Q: 如何备份数据库？
 

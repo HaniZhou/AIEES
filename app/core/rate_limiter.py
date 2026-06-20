@@ -1,15 +1,16 @@
 """
 登录限流与账号锁定模块
 """
-import logging
-from fastapi import Request, Depends, HTTPException
 from typing import Annotated
-from app.Config import AuthSecurityConfig
-from app.core.security import require_student_or_teacher
-from app.model.schema.schema import TokenData
-from app.core.redis_pool import get_redis
 
-logger = logging.getLogger(__name__)
+from app.core.config import AuthSecurityConfig
+from app.core.logging import get_logger
+from app.core.redis import get_redis
+from app.core.security import verify_token_return_payload
+from app.schema.user import TokenData
+from fastapi import Depends, HTTPException, Request
+
+logger = get_logger(__name__)
 
 #  Redis Key
 CAPTCHA_KEY_PREFIX = "auth:captcha:"
@@ -165,14 +166,15 @@ async def verify_captcha(redis_client, captcha_key: str, user_answer: str) -> bo
 
 async def asr_rate_limit(
         request: Request,
-        token_data: Annotated[TokenData, Depends(require_student_or_teacher)]
+        token_data: Annotated[TokenData, Depends(verify_token_return_payload)]
 ) -> TokenData:
     """函数目的：限制用户每分钟调用 ASR 接口的次数为 20 次。
     参数信息：
         - request: Request，FastAPI 请求对象。
-        - token_data: TokenData，由 require_student_or_teacher 解析得到的 JWT 载荷。
+        - token_data: TokenData，由 verify_token_return_payload 解析得到的 JWT 载荷。
     返回值：TokenData，验证通过后原样返回供下游使用。
     """
+
     redis = get_redis()
     key = f"asr_limit:{token_data.id}"
     count = await redis.incr(key)

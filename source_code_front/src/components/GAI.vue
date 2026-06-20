@@ -125,7 +125,7 @@
 <script setup>
 import {ref, computed, onMounted, nextTick, reactive, onBeforeUnmount, watch} from 'vue'
 import {showToast, showConfirmDialog} from 'vant'
-import {chatStream, asrStream} from '@/api/services'
+import {chatStream, asrStream} from '@/api/service.js'
 import {useClipboard} from '@vueuse/core'
 import MarkdownIt from 'markdown-it'
 import texmath from 'markdown-it-texmath'
@@ -290,7 +290,7 @@ const handleStreamResponse = async (messagesPayload, userMsg, aiMsg, targetArray
 
   let isMsgPushed = false
   abortController.value = new AbortController()
-  const finalUrl = (isInTaskMode.value && taskContext.apiUrl) ? taskContext.apiUrl : `/services/chat/stream/${props.roleSuffix}`
+  const finalUrl = (isInTaskMode.value && taskContext.apiUrl) ? taskContext.apiUrl : `/service/chat/stream/${props.roleSuffix}`
 
   let renderBuffer = ''
   let flushTimer = null

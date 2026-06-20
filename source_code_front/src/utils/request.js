@@ -1,4 +1,4 @@
-// src/utils/request.js
+// src/common/request.js
 import axios from "axios";
 import {showToast} from "vant";  // ：统一错误提示
 

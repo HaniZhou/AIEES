@@ -1,4 +1,4 @@
-// src/utils/sseRequest.js
+// src/common/sseRequest.js
 import { showToast } from 'vant'
 
 /**

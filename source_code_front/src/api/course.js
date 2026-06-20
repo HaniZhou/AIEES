@@ -56,15 +56,15 @@ export function delete_course(courseId) {
 
 /**
  * @description 上传课程资源文件（视频/PDF）
- * @method POST /services/resource
+ * @method POST /service/resource
  * @requestParams { File } file - 资源文件对象
  * @response { code: number, data: { path: string } }
- * @interactionNotes [重要] 后端路由已修正为 /services/resource。返回标准信封，业务层直接使用 res.data.path。
+ * @interactionNotes [重要] 后端路由已修正为 /service/resource。返回标准信封，业务层直接使用 res.data.path。
  */
 export function upload_resource(file) {
     const formData = new FormData();
     formData.append("file", file);
-    return request.post("/services/resource", formData);
+    return request.post("/service/resource", formData);
 }
 
 /**
@@ -335,7 +335,7 @@ export function submit_task_answers(courseId, taskId, answers) {
 
 /**
  * @description 发起 GAI 对话（异步任务）
- * @method POST /services/gai_chat
+ * @method POST /service/gai_chat
  * @requestParams { string } courseId - 课程 ID
  * @requestParams { string } taskId - 任务 ID
  * @requestParams { Array } messages - 完整对话上下文
@@ -343,18 +343,18 @@ export function submit_task_answers(courseId, taskId, answers) {
  * @interactionNotes [P0级重大修改] 后端禁止同步阻塞等待 LLM。调用后立即返回 200 及 task_id。前端需拿着 task_id 调用 poll_gai_chat_task 轮询结果，并切换 UI 为"后台处理中"状态。
  */
 export function gai_chat(courseId, taskId, messages) {
-    return request.post(`/services/gai_chat`, {messages});
+    return request.post(`/service/gai_chat`, {messages});
 }
 
 /**
  * @description 轮询 GAI 任务结果
- * @method GET /services/gai_chat/:taskId
+ * @method GET /service/gai_chat/:taskId
  * @requestParams { string } taskId - 由 gai_chat 接口返回的异步任务 ID
  * @response { code: number, data: { task_id: string, status: 'processing' | 'completed' | 'failed', result?: { reply: { content: string } } } }
  * @interactionNotes 前端应设置定时器（如 2秒）轮询此接口。当 status === 'completed' 时，从 data.result.reply.content 取出最终 AI 回复；当 status === 'failed' 时停止轮询。
  */
 export function poll_gai_chat_task(taskId) {
-    return request.get(`/services/gai_chat/${taskId}`);
+    return request.get(`/service/gai_chat/${taskId}`);
 }
 
 /**
