@@ -1,0 +1,53 @@
+[project]
+name = "aiees"
+version = "0.1.0"
+requires-python = ">=3.14"
+dependencies = [
+    "aiofiles>=25.1.0",
+    "asyncpg>=0.31.0",
+    "fastapi>=0.137.2",
+    "gunicorn>=26.0.0",
+    "openai>=2.43.0",
+    "pillow>=12.2.0",
+    "pwdlib[argon2]>=0.3.0",
+    "pyjwt>=2.13.0",
+    "python-dotenv>=1.2.2",
+    "python-multipart>=0.0.32",
+    "sqlmodel>=0.0.38",
+    "taskiq>=0.12.4",
+    "taskiq-redis>=1.2.2",
+    "uvicorn[standard]>=0.49.0",
+]
+
+[dependency-groups]
+dev = [
+    "mypy>=2.1.0",
+    "ruff>=0.15.17",
+]
+
+[tool.ruff]
+target-version = "py314"
+line-length = 120
+indent-width = 4
+extend-exclude = ["app/infra/alembic"]
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "N", "UP", "B", "SIM"]
+ignore = ["B008", "N818"] # B008: 函数默认参数中调用函数; N818: AppBusinessException 命名已在全项目使用
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
+
+[tool.mypy]
+python_version = "3.14"
+ignore_missing_imports = true
+no_implicit_optional = true
+warn_redundant_casts = true
+warn_return_any = true
+strict_equality = true
+exclude = ["app/infra/alembic"]
+
+[tool.uv]
+index-url = "https://pypi.tuna.tsinghua.edu.cn/simple/"
+
