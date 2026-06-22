@@ -11,13 +11,13 @@ asr_logger = get_logger(f"{__name__}.asr")
 
 client = AsyncOpenAI(
     base_url=AIConfig.AI_BASE_URL,
-    api_key=AIConfig.API_KEY,
+    api_key=AIConfig.AI_API_KEY,
     timeout=60.0,
 )
 
 asr_client = AsyncOpenAI(
     base_url=AIConfig.AI_BASE_URL,
-    api_key=AIConfig.API_KEY,
+    api_key=AIConfig.AI_API_KEY,
     timeout=httpx.Timeout(connect=3.0, read=120.0, write=10.0, pool=5.0)
 )
 

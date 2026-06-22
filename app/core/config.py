@@ -84,7 +84,7 @@ Limit = Limit()
 class AIConfig(BaseSettings):
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
 
-    AI_BASE_URL: str = Field(validation_alias="BASE_URL")
+    AI_BASE_URL: str
     AI_MODEL_TEXT: str
     AI_MODEL_ASR: str
     AI_API_KEY: str
