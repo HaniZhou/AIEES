@@ -1,7 +1,5 @@
 from contextlib import asynccontextmanager
 
-#
-from dotenv import load_dotenv
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 from starlette.middleware.cors import CORSMiddleware
@@ -13,6 +11,10 @@ from app.api.v1.course import router as course_router
 from app.api.v1.organization import router as organization_router
 from app.api.v1.service import router as services_router
 from app.api.v1.student import router as student_router
+from app.core.config import CORSConfig, UrlConfig
+
+# 导入连接池预热
+from app.core.database import engine, warmup_connection_pool
 
 # 导入异常处理器
 # 导入业务异常类
@@ -23,10 +25,6 @@ from app.core.exceptions import (
     http_exception_handler,
     pydantic_validation_exception_handler,
 )
-from app.core.config import CORSConfig, SecretConfig, UrlConfig
-
-# 导入连接池预热
-from app.core.database import engine, warmup_connection_pool
 
 # 导入日志配置
 from app.core.logging import configure_logging
@@ -39,33 +37,11 @@ from app.core.redis import close_redis_pools
 from fastapi import FastAPI, HTTPException
 
 
-def _validate_config():
-    """启动时校验关键配置项是否缺失。"""
-    required = {
-        "SECRET_KEY": SecretConfig.SECRET_KEY,
-        "DB_USER": SecretConfig.DB_USER,
-        "DB_PASSWORD": SecretConfig.DB_PASSWORD,
-        "REDIS_PASSWORD": SecretConfig.REDIS_PASSWORD,
-        "ADMIN_NAME": SecretConfig.ADMIN_NAME,
-        "ADMIN_PASSWORD": SecretConfig.ADMIN_PASSWORD,
-        "AI_BASE_URL": SecretConfig.AI_BASE_URL,
-    }
-
-    missing = [name for name, value in required.items() if value is None]
-    if missing:
-        raise RuntimeError(f"启动失败：以下环境变量未配置: {', '.join(missing)}\n请检查 .env 文件或环境变量设置。")
-
-
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     # ==================== 启动阶段 ====================
-    load_dotenv()  # 从项目根目录 /AIEES 启动 FastAPI（ uvicorn app.main:app）， load_dotenv会自动找到同级的 .env 文件
-
     # 日志配置必须在最前面
     configure_logging()
-
-    # 启动时立即校验配置
-    _validate_config()
 
     try:
         print("正在创建必要的目录...")
@@ -104,10 +80,10 @@ app.add_exception_handler(Exception, global_system_exception_handler)
 # ==================== 中间件与路由 ====================
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=CORSConfig.cors_allow_origins,
+    allow_origins=CORSConfig.CORS_ALLOW_ORIGINS,
     allow_credentials=True,
-    allow_methods=CORSConfig.cors_allow_methods,
-    allow_headers=CORSConfig.cors_allow_headers,
+    allow_methods=CORSConfig.CORS_ALLOW_METHODS,
+    allow_headers=CORSConfig.CORS_ALLOW_HEADERS,
     max_age=600,
 )
 

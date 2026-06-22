@@ -4,13 +4,14 @@
 """
 
 import logging
-import os
 import sys
 from contextvars import ContextVar
 
+from app.core.config import LogConfig
+
 # 日志级别（通过环境变量配置，默认 INFO）
-LOG_LEVEL = os.getenv("LOG_LEVEL", "INFO").upper()
-SLOW_QUERY_MS = int(os.getenv("SLOW_QUERY_MS", "500"))
+LOG_LEVEL = LogConfig.LOG_LEVEL
+SLOW_QUERY_MS = LogConfig.SLOW_QUERY_MS
 request_id_var: ContextVar[str] = ContextVar("request_id", default="-")
 
 _LOG_FORMAT = "%(asctime)s.%(msecs)03d [%(levelname)s] [%(name)s] [rid=%(request_id)s] %(message)s"

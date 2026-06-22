@@ -16,10 +16,6 @@ def response_success(data: Any = None) -> JSONResponse:
     return JSONResponse(status_code=status.HTTP_200_OK, content={"code": 200, "data": data if data is not None else {}})
 
 
-# 错误响应由 core/exceptions._build_error_response 构造。
-# 路由层统一 raise AppBusinessException，由全局拦截器处理并记录日志。
-
-
 def response_created(data: Any = None) -> JSONResponse:
     """规范：资源创建成功时使用 201 状态码，但响应体仍遵循标准信封"""
     return JSONResponse(

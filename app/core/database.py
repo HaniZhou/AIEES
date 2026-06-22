@@ -5,14 +5,11 @@ from sqlalchemy import event, text
 from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
 from sqlmodel.ext.asyncio.session import AsyncSession
 
-from app.core.config import SecretConfig, UrlConfig
-from app.core.logging import SLOW_QUERY_MS, get_logger
+from app.core.config import DBConfig, LogConfig
+from app.core.logging import get_logger
 
 #  连接字符串构建
-_url = (
-    f"postgresql+asyncpg://{SecretConfig.DB_USER}:{SecretConfig.DB_PASSWORD}"
-    f"@{UrlConfig.DB_HOST}:{UrlConfig.DB_PORT}/{UrlConfig.DB_NAME}"
-)
+_url = DBConfig.DATABASE_URL
 
 #  异步引擎初始化
 engine = create_async_engine(
@@ -29,7 +26,7 @@ db_logger = get_logger("app.core.database.slow")
 
 
 def _setup_slow_query_listener():
-    if SLOW_QUERY_MS <= 0:
+    if LogConfig.SLOW_QUERY_MS <= 0:
         return
 
     @event.listens_for(engine.sync_engine, "before_cursor_execute")
@@ -43,7 +40,7 @@ def _setup_slow_query_listener():
         if start is None:
             return
         total_ms = int((time.perf_counter() - start) * 1000)
-        if total_ms >= SLOW_QUERY_MS:
+        if total_ms >= LogConfig.SLOW_QUERY_MS:
             stmt = conn._query_statement or statement
             db_logger.warning("Slow query (%dms): %.120s", total_ms, stmt)
 

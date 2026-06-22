@@ -1,10 +1,10 @@
 """ Redis 异步连接池全局单例（仅保留标准 Redis 连接池） """
 import redis.asyncio as redis
 
-from app.core import config
+from app.core.config import RedisConfig
 
 redis_pool: redis.ConnectionPool = redis.ConnectionPool.from_url(
-    f"redis://:{config.SecretConfig.REDIS_PASSWORD}@{config.UrlConfig.REDIS_HOST}:{config.UrlConfig.REDIS_PORT}",
+    RedisConfig.REDIS_URL,
     encoding="utf-8",
     decode_responses=True
 )

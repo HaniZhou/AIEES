@@ -104,11 +104,10 @@ npm install
 # VITE_API_BASE_URL=http://localhost/api
 # VITE_RESOURCE_BASE_URL=http://localhost/api
 npm run build
-mkdir -p ../frontend/dist
-cp -r dist/* ../frontend/dist/
 cd ..
 ```
 
+> `npm run build` 会自动创建 `frontend/dist/` 目录并将构建产物输出其中。
 > 如需自定义后端地址，构建前编辑 `source_code_front/.env.production` 中的 `VITE_API_BASE_URL`。
 
 ### 3. 配置环境变量
@@ -214,24 +213,17 @@ docker compose up -d --build api worker
 
 ### 更新前端代码（Vue）
 
-当你修改了 `source_code_front/` 目录下的前端代码后，需要重新构建并替换 `dist` 目录：
+当你修改了 `source_code_front/` 目录下的前端代码后，重新构建后重启 Nginx 即可生效：
 
 ```bash
-# 1. 进入前端目录并构建
 cd source_code_front
 npm run build
-
-# 2. 将构建产物复制到 Nginx 静态目录
-cp -r dist/* ../frontend/dist/
-
-# 3. 回到项目根目录并重启 Nginx
 cd ..
 docker compose restart nginx
 ```
 
-> **说明**：
-> - Nginx 容器通过 volume 挂载 `./frontend/dist` 目录，替换文件后只需 `restart` 即可生效
-> - 如果修改了 `.env.production` 中的 API 地址，构建时必须重新指定
+> `npm run build` 直接输出到 `frontend/dist/`（通过 `vite.config.js` 中的 `build.outDir` 配置），无需手动复制。
+> Nginx 容器通过 volume 挂载 `./frontend/dist` 目录，替换文件后只需 `restart` 即可生效。
 
 ---
 
@@ -330,7 +322,7 @@ AIEES/
 │   ├── vite.config.js            # Vite 配置
 │   └── package.json              # 依赖管理
 │
-├── frontend/dist/                # 前端构建产物（Nginx 使用）
+├── frontend/dist/                # 前端构建产物（npm run build 自动生成，Nginx 使用）
 ├── static/uploads/               # 文件上传目录
 │   ├── covers/                   # 封面图片
 │   ├── pdfs/                     # PDF 文件
@@ -423,7 +415,7 @@ cd source_code_front
 git pull
 npm install
 npm run build
-cp -r dist/* ../frontend/dist/
+cd ..
 docker compose restart nginx
 ```
 

@@ -7,6 +7,10 @@ import postcsspxtoviewport from 'postcss-px-to-viewport-8-plugin'
 
 // https://vite.dev/config/
 export default defineConfig({
+    build: {
+        outDir: "../frontend/dist",     // 直接输出到 Nginx 挂载的路径
+        emptyOutDir: true,
+    },
     plugins: [
         vue(),
         vueDevTools(),

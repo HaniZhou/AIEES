@@ -3,28 +3,28 @@ import asyncio
 import httpx
 from openai import AsyncOpenAI
 
-from app.core.config import SecretConfig
+from app.core.config import AIConfig
 from app.core.logging import get_logger
 
 logger = get_logger(f"{__name__}.ai")
 asr_logger = get_logger(f"{__name__}.asr")
 
 client = AsyncOpenAI(
-    base_url=SecretConfig.AI_BASE_URL,
-    api_key=SecretConfig.API_KEY,
+    base_url=AIConfig.AI_BASE_URL,
+    api_key=AIConfig.API_KEY,
     timeout=60.0,
 )
 
 asr_client = AsyncOpenAI(
-    base_url=SecretConfig.AI_BASE_URL,
-    api_key=SecretConfig.API_KEY,
+    base_url=AIConfig.AI_BASE_URL,
+    api_key=AIConfig.API_KEY,
     timeout=httpx.Timeout(connect=3.0, read=120.0, write=10.0, pool=5.0)
 )
 
 
 async def generate_gai_reply_stream(messages: list):
     completion = await client.chat.completions.create(
-        model="GLM-5.1",
+        model=AIConfig.AI_MODEL_TEXT,
         messages=messages,
         temperature=0.8,
         top_p=0.8,
@@ -46,7 +46,7 @@ async def generate_gai_analysis_text(system_prompt: str, user_content: str) -> s
     for attempt in range(1, max_retries + 1):
         try:
             completion = await client.chat.completions.create(
-                model="GLM-5.1",
+                model=AIConfig.AI_MODEL_TEXT,
                 messages=messages,
                 temperature=0.8,
                 top_p=0.8,
@@ -58,7 +58,7 @@ async def generate_gai_analysis_text(system_prompt: str, user_content: str) -> s
             return "AI分析失败：未返回有效内容"
         except Exception as e:
             if attempt == max_retries:
-                raise Exception(f"AI分析重试耗尽: {str(e)}")
+                raise Exception(f"AI分析重试耗尽: {str(e)}") from e
             logger.warning(f"API call failed, retrying ({attempt}/{max_retries}), error: {str(e)}")
             await asyncio.sleep(1 * attempt)
 
@@ -68,7 +68,7 @@ async def generate_asr_reply_stream(messages: list):
     for attempt in range(1, max_retries + 1):
         try:
             completion = await asr_client.chat.completions.create(
-                model="qwen3-asr",
+                model=AIConfig.AI_MODEL_ASR,
                 messages=messages,
                 stream=True,
                 extra_body={"asr_options": {"enable_itn": True}},
@@ -105,6 +105,6 @@ async def generate_asr_reply_stream(messages: list):
         except Exception as conn_err:
             if attempt == max_retries:
                 asr_logger.error(f"ASR connection failed after {max_retries} retries: {str(conn_err)}")
-                raise httpx.HTTPStatusError("语音识别服务连接失败", request=None, response=None)
+                raise httpx.HTTPStatusError("语音识别服务连接失败", request=None, response=None) from conn_err
             asr_logger.warning(f"ASR connection failed, retrying ({attempt}/{max_retries}), error: {str(conn_err)}")
             await asyncio.sleep(1 * attempt)

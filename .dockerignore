@@ -24,10 +24,6 @@ source_code_front/
 .git/
 .gitignore
 
-# === 运行时文件 ===
-logs/
-*.log
-
 # === 用户上传文件（运行时挂载，不该进镜像）===
 static/uploads/
 

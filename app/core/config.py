@@ -1,106 +1,146 @@
-""" 全局常量配置 """
-import os
 from pathlib import Path
 
-
-class CORSConfig:
-    # 从环境变量读取，多个 origin 用逗号分隔
-    cors_origins_str = os.getenv("CORS_ORIGINS", "http://localhost:5173,http://127.0.0.1:5173")
-    cors_allow_origins = [o.strip() for o in cors_origins_str.split(",") if o.strip()]
-
-    cors_allow_methods = ["GET",
-                          "POST",
-                          "OPTIONS",
-                          "PUT",
-                          "DELETE",
-                          "PATCH",
-                          ]
-    cors_allow_headers = ["Content-Type",
-                          "Authorization",
-                          "Accept",
-                          "Origin",
-                          "X-Requested-With",
-                           "X-Request-Id", ]
+from pydantic import Field, computed_field
+from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
-class SecretConfig:
+class CORSConfig(BaseSettings):
+    model_config = SettingsConfigDict(env_file=".env", extra="ignore")
+
+    CORS_ORIGINS: str = "http://localhost:5173,http://127.0.0.1:5173"
+    CORS_ALLOW_METHODS: list[str] = ["GET", "POST", "OPTIONS", "PUT", "DELETE", "PATCH"]
+    CORS_ALLOW_HEADERS: list[str] = [
+        "Content-Type",
+        "Authorization",
+        "Accept",
+        "Origin",
+        "X-Requested-With",
+        "X-Request-Id",
+    ]
+
+    @computed_field
+    def CORS_ALLOW_ORIGINS(self) -> list[str]:
+        return [o.strip() for o in self.CORS_ORIGINS.split(",") if o.strip()]
+
+
+CORSConfig = CORSConfig()
+
+
+class SecretConfig(BaseSettings):
+    model_config = SettingsConfigDict(env_file=".env", extra="ignore")
+
     # JTW 加密
-    SECRET_KEY = os.getenv("SECRET_KEY", None)
+    SECRET_KEY: str
     ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 1440
-
-    # Redis配置
-    REDIS_PASSWORD: str = os.getenv("REDIS_PASSWORD", None)
-
-    # 数据库配置
-    DB_USER: str = os.getenv("DB_USER", None)
-    DB_PASSWORD: str = os.getenv("DB_PASSWORD", None)
-    ADMIN_PASSWORD: str = os.getenv("ADMIN_PASSWORD", None)
-    ADMIN_NAME: str = os.getenv("ADMIN_NAME", None)
-
-    # AI 配置
-    AI_BASE_URL = os.getenv("BASE_URL", None)
-    API_KEY = os.getenv("API_KEY", None)
+    # 后端管理员
+    ADMIN_NAME: str
+    ADMIN_PASSWORD: str
 
 
-class UrlConfig:
-    # Docker 环境直接使用绝对路径，避免 Gunicorn Fork 时的路径偏移问题
+SecretConfig = SecretConfig()
+
+
+class UrlConfig(BaseSettings):
+    model_config = SettingsConfigDict(env_file=".env", extra="ignore")
+
     BASE_DIR: Path = Path("/app")
     ROOT_DIR: Path = Path("/app")
-
     STATIC_DIR: Path = Path("/app/static")
     UPLOAD_DIR: Path = Path("/app/static/uploads")
     COVERS_DIR: Path = Path("/app/static/uploads/covers")
     PDF_DIR: Path = Path("/app/static/uploads/pdfs")
     VIDEO_DIR: Path = Path("/app/static/uploads/videos")
-    # Redis 配置
-    REDIS_HOST: str = os.getenv("REDIS_HOST", None)
-    REDIS_PORT: int = int(os.getenv("REDIS_PORT", None))
 
-    # 数据库配置
-    DB_HOST: str = os.getenv("DB_HOST", None)
-    DB_PORT: int = int(os.getenv("DB_PORT", None))
-    DB_NAME: str = os.getenv("DB_NAME", None)
-
-    @classmethod
-    def init_directories(cls):
-        """初始化所有必要的目录"""
-        for dir_path in [cls.STATIC_DIR, cls.UPLOAD_DIR,
-                         cls.COVERS_DIR, cls.PDF_DIR, cls.VIDEO_DIR]:
+    def init_directories(self):
+        for dir_path in [self.STATIC_DIR,self.UPLOAD_DIR, self.COVERS_DIR, self.PDF_DIR, self.VIDEO_DIR]:
             dir_path.mkdir(parents=True, exist_ok=True)
 
-    # 文件路径
-    DATABASE_PATH: Path = ROOT_DIR / "database.db"
 
-    # 验证路径
-    @classmethod
-    def validate(cls):
-        """验证关键路径"""
-        if not cls.DATABASE_PATH.exists():
-            print(f"数据库文件不存在: {cls.DATABASE_PATH}")
-        return True
+UrlConfig = UrlConfig()
 
 
-class Limit:
-    MAX_VIDEO_SIZE: int = 500 * 1024 * 1024  # 500MB
-    MAX_PDF_SIZE: int = 50 * 1024 * 1024  # 50MB
-    MAX_FILE_SIZE: int = 5 * 1024 * 1024  # 5MB，封面图限制
+class Limit(BaseSettings):
+    model_config = SettingsConfigDict(env_file=".env", extra="ignore")
 
-    # ASR 限制
-    MAX_ASR_FILE_SIZE: int = 40 * 1024 * 1024  # 40MB
-    ASR_ALLOWED_CONTENT_TYPES = {
+    MAX_VIDEO_SIZE: int = 524_288_000
+    MAX_PDF_SIZE: int = 52_428_800
+    MAX_FILE_SIZE: int = 5_242_880
+    MAX_ASR_FILE_SIZE: int = 41_943_040
+    ASR_ALLOWED_CONTENT_TYPES: dict[str, str] = {
         "audio/mpeg": "mp3",
         "audio/mp3": "mp3",
         "audio/x-mpeg": "mp3",
         "audio/wav": "wav",
         "audio/x-wav": "wav",
         "audio/webm": "webm",
-        "audio/ogg": "ogg"
+        "audio/ogg": "ogg",
     }
 
 
-class AuthSecurityConfig:
-    """ 登录安全与验证码策略配置 """
+Limit = Limit()
+
+
+class AIConfig(BaseSettings):
+    model_config = SettingsConfigDict(env_file=".env", extra="ignore")
+
+    AI_BASE_URL: str = Field(validation_alias="BASE_URL")
+    AI_MODEL_TEXT: str
+    AI_MODEL_ASR: str
+    AI_API_KEY: str
+
+
+AIConfig = AIConfig()
+
+
+class DBConfig(BaseSettings):
+    model_config = SettingsConfigDict(env_file=".env", extra="ignore")
+    DB_HOST: str
+    DB_PORT: int
+    DB_NAME: str
+    DB_USER: str
+    DB_PASSWORD: str
+
+    @computed_field
+    def DATABASE_URL(self) -> str:
+        return (
+            f"postgresql+asyncpg://{DBConfig.DB_USER}:{DBConfig.DB_PASSWORD}"
+            f"@{self.DB_HOST}:{self.DB_PORT}/{self.DB_NAME}"
+        )
+
+
+DBConfig = DBConfig()
+
+
+class RedisConfig(BaseSettings):
+    model_config = SettingsConfigDict(env_file=".env", extra="ignore")
+    REDIS_HOST: str
+    REDIS_PORT: int
+    REDIS_PASSWORD: str
+
+    @computed_field
+    def REDIS_URL(self) -> str:
+        return f"redis://:{self.REDIS_PASSWORD}@{self.REDIS_HOST}:{self.REDIS_PORT}"
+
+
+RedisConfig = RedisConfig()
+
+
+class LogConfig(BaseSettings):
+    model_config = SettingsConfigDict(env_file=".env", extra="ignore")
+
+    LOG_LEVEL: str = "INFO"
+    SLOW_QUERY_MS: int = 500
+
+
+LogConfig = LogConfig()
+
+
+class AuthSecurityConfig(BaseSettings):
+    """登录安全与验证码策略配置"""
+
+    model_config = SettingsConfigDict(env_file=".env", extra="ignore")
+
     # 验证码有效期（秒）
     CAPTCHA_TTL: int = 300
     # 登录失败计数时间窗口（秒），超过此时间失败次数自动清零
@@ -113,3 +153,4 @@ class AuthSecurityConfig:
     FAIL_THRESHOLD_LOCK: int = 10
 
 
+AuthSecurityConfig = AuthSecurityConfig()
