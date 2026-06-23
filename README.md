@@ -18,6 +18,7 @@
   - [更新前端代码（Vue）](#更新前端代码vue)
 - [环境变量说明](#环境变量说明)
 - [目录结构](#目录结构)
+- [角色说明](#角色说明)
 - [常见问题](#常见问题)
 
 ---
@@ -30,24 +31,26 @@
 │  浏览器/客户端│─────▶│   Nginx       │─────▶│  FastAPI     │
 │  (Vue SPA)   │      │  (反向代理 +   │      │  (API 服务)   │
 │              │◀─────│   静态文件)    │◀─────│              │
-└──────────────┘      └──────────────┘      └──────┬───────┘
-                                                    │
-                    ┌───────────────────────────────┼───────────────┐
-                    │                               │               │
-                    ▼                               ▼               ▼
-            ┌──────────────┐              ┌──────────────┐
-            │  PostgreSQL  │              │    Redis      │
-            │  (主数据库)   │              │  (缓存/队列)   │
-            └──────────────┘              └──────┬───────┘
-                                                 │
-                                          ┌───────▼───────┐
-                                          │  Taskiq Worker │
-                                          │  (异步任务队列)  │
-                                          │  AI 评分/分析   │
-                                          ├───────────────┤
-                                          │Taskiq Scheduler│
-                                          │  (定时任务)     │
-                                          └───────────────┘
+└──────────────┘      └──────────────┘      └──────┬──┬─────┘
+                                                     │  │
+                    ┌────────────────────────────────┘  └──────────────┐
+                    │                                                   │
+                    ▼                                                   ▼
+            ┌──────────────┐                                  ┌──────────────┐
+            │  PostgreSQL  │                                  │    Redis      │
+            │  (主数据库)   │                                  │  (缓存/队列)   │
+            └──┬───┬───┬───┘                                  └──────┬───────┘
+               │   │   │                                              │
+               │   │   └──────────────────────────────┐               │
+               │   │                                  │               │
+               │   ▼                                  ▼               ▼
+               │  ┌──────────────────────────────────────────────────────┐
+               │  │                     Taskiq                          │
+               │  │  ┌────────────────────┐       ┌──────────────────┐  │
+               └──│──│  Worker             │       │  Scheduler       │  │
+                  │  │  (异步任务, AI 评分)  │       │  (定时任务调度)   │  │
+                  │  └────────────────────┘       └──────────────────┘  │
+                  └──────────────────────────────────────────────────────┘
 ```
 
 
@@ -59,19 +62,28 @@
 - **数据库**: PostgreSQL 18
 - **缓存/队列**: Redis 8 + Taskiq
 - **AI 集成**: OpenAI API (兼容接口)
-- **认证**: JWT (PyJWT)
+- **认证**: JWT (PyJWT), Argon2 密码哈希
 - **文件处理**: Pillow, python-multipart, aiofiles
+- **包管理**: uv + pyproject.toml
+- **代码检查**: Ruff, mypy
 
 ### 前端 (source_code_front/)
-- **框架**: Vue 3 (Composition API)
+- **框架**: Vue 3 (Composition API, `<script setup>`)
 - **构建工具**: Vite 8
 - **UI 组件库**: Vant 4 (移动端优先)
-- **状态管理**: Pinia
+- **状态管理**: Pinia 3
 - **路由**: Vue Router 4
 - **图表**: ECharts 6
 - **HTTP**: Axios
-- **Markdown**: markdown-it, katex, turndown
+- **Markdown**: markdown-it, markdown-it-texmath, katex, turndown
+- **代码高亮**: PrismJS
 - **文档预览**: PDF.js, mammoth (Word)
+- **安全过滤**: DOMPurify
+- **时间处理**: dayjs
+- **表格处理**: xlsx
+- **语音录制**: @breezystack/lamejs (PCM → MP3), @microsoft/fetch-event-source (SSE)
+- **工具库**: @vueuse/core
+- **移动端适配**: postcss-px-to-viewport-8-plugin
 
 ---
 
@@ -118,8 +130,10 @@ cd ..
 - `ADMIN_NAME` — 管理员账号名
 - `ADMIN_PASSWORD` — 管理员密码
 - `SECRET_KEY` — JWT 签名密钥（生产环境务必修改）
-- `BASE_URL` — AI 接口地址
-- `API_KEY` — AI 接口密钥
+- `AI_BASE_URL` — AI 接口地址（OpenAI 兼容）
+- `AI_API_KEY` — AI 接口密钥
+- `AI_MODEL_TEXT` — 文本模型名称
+- `AI_MODEL_ASR` — 语音识别模型名称
 
 **其他默认值已可用，如需修改：**
 - `POSTGRES_PASSWORD` — 数据库密码
@@ -140,9 +154,6 @@ docker compose up -d
 ```bash
 # 进入 API 容器执行
 docker compose exec api python -m app.infra.scripts.init_db
-
-# 或本地开发时直接运行
-python -m app.infra.scripts.init_db
 ```
 
 执行成功会显示：
@@ -162,7 +173,7 @@ python -m app.infra.scripts.init_db
 > ⚠️ **首次登录**：执行初始化脚本后，系统会自动创建管理员账号，账号信息在 `.env` 文件中配置：
 > - **账号**: `ADMIN_NAME` 的值（默认 `Admin`）
 > - **密码**: `ADMIN_PASSWORD` 的值
-> 
+>
 > **配置方法**：编辑项目根目录的 `.env` 文件，修改以下两项：
 > ```env
 > ADMIN_NAME=你的管理员账号
@@ -209,7 +220,7 @@ docker compose up -d --build api worker
 > **说明**：
 > - `--build` 会强制重新构建镜像，确保最新代码被打包
 > - 如果只修改了业务逻辑，也可使用 `docker compose restart api worker` 快速重启（但不会重新构建镜像）
-> - 如果修改了 `requirements.txt`，必须使用 `--build` 重新构建
+> - 如果修改了 `pyproject.toml` 或 `uv.lock`，必须使用 `--build` 重新构建
 
 ### 更新前端代码（Vue）
 
@@ -234,18 +245,25 @@ docker compose restart nginx
 | 变量 | 说明 | 默认值 |
 |------|------|--------|
 | `ADMIN_NAME` | 管理员账号名 | `Admin` |
-| `ADMIN_PASSWORD` | 管理员密码 | `Default_value` |
+| `ADMIN_PASSWORD` | 管理员密码 | 需设置 |
 | `DB_HOST` | 数据库主机 | `db` |
 | `DB_PORT` | 数据库端口 | `5432` |
 | `DB_NAME` | 数据库名 | `postgres` |
 | `DB_USER` | 数据库用户 | `postgres` |
-| `DB_PASSWORD` | 数据库密码 | `postgres` |
+| `DB_PASSWORD` | 数据库密码 | 需设置 |
 | `REDIS_HOST` | Redis 主机 | `redis` |
 | `REDIS_PORT` | Redis 端口 | `6379` |
-| `REDIS_PASSWORD` | Redis 密码 | `redis123` |
-| `BASE_URL` | AI 接口地址（OpenAI 兼容） | `""`（需设置） |
-| `API_KEY` | AI 接口密钥 | `""`（需设置） |
-| `SECRET_KEY` | JWT 签名密钥 | `fe6ae3482d47273b4b969f048e248f4ede8a8fc00bc01f35bf4257b6c950ec84`（**生产环境务必修改**） |
+| `REDIS_PASSWORD` | Redis 密码 | 需设置 |
+| `AI_BASE_URL` | AI 接口地址（OpenAI 兼容） | 需设置 |
+| `AI_API_KEY` | AI 接口密钥 | 需设置 |
+| `AI_MODEL_TEXT` | 文本模型名称 | 需设置 |
+| `AI_MODEL_ASR` | 语音识别模型名称 | 需设置 |
+| `SECRET_KEY` | JWT 签名密钥 | 需设置 |
+| `CORS_ORIGINS` | CORS 允许来源（逗号分隔） | `http://localhost:5173,http://127.0.0.1:5173` |
+| `LOG_LEVEL` | 日志级别 | `INFO` |
+| `SLOW_QUERY_MS` | SQL 慢查询阈值（毫秒） | `500` |
+| `COMPOSE_PROJECT_NAME` | Docker Compose 项目名 | `aiees` |
+| `VERSION` | 版本标签 | `1.0.0` |
 
 ### 前端环境变量
 
@@ -257,8 +275,9 @@ docker compose restart nginx
 > **安全提醒**: 生产环境部署前，请务必修改以下默认值：
 > - `ADMIN_NAME` / `ADMIN_PASSWORD` — 管理员账号密码
 > - `SECRET_KEY` — JWT 密钥
-> - `POSTGRES_PASSWORD` — 数据库密码
+> - `DB_PASSWORD` / `POSTGRES_PASSWORD` — 数据库密码
 > - `REDIS_PASSWORD` — Redis 密码
+> - `AI_API_KEY` — AI 接口密钥
 
 ---
 
@@ -267,54 +286,97 @@ docker compose restart nginx
 ```
 AIEES/
 ├── app/                          # 后端 FastAPI 应用
-│   ├── api/v1/                   # API 路由
-│   │   ├── auth.py               # 认证接口
-│   │   ├── course.py             # 课程接口
-│   │   ├── classes.py            # 班级接口
-│   │   ├── services.py           # AI 服务接口
-│   │   ├── student.py            # 学生端接口
-│   │   ├── organizatoin.py       # 组织接口
+│   ├── api/                      # API 路由
 │   │   ├── dependencies.py       # 公共依赖项（角色验证等）
-│   │   └── admin.py              # 管理员接口
+│   │   └── v1/
+│   │       ├── admin.py          # 管理员接口
+│   │       ├── auth.py           # 认证接口
+│   │       ├── classes.py        # 班级接口
+│   │       ├── course.py         # 课程接口
+│   │       ├── organization.py   # 组织接口
+│   │       ├── service.py        # AI 服务接口
+│   │       └── student.py        # 学生端接口
+│   ├── common/                   # 公共工具
+│   │   ├── formatters.py         # 格式化工具
+│   │   ├── pagination.py         # 分页工具
+│   │   ├── response.py           # 统一响应
+│   │   └── tools.py              # AI 调用工具
 │   ├── core/                     # 核心功能
-│   │   ├── database.py           # 数据库引擎
-│   │   ├── redis.py              # Redis 连接池
+│   │   ├── ai_client.py          # AI 客户端
 │   │   ├── config.py             # 全局配置
-│   │   ├── security.py           # JWT/密码安全
+│   │   ├── database.py           # 数据库引擎
+│   │   ├── exceptions.py         # 异常处理
 │   │   ├── logging.py            # 日志配置
 │   │   ├── middleware.py         # 中间件
-│   │   ├── captcha.py            # 验证码
+│   │   ├── prompts.py            # AI 提示词
 │   │   ├── rate_limiter.py       # 限流
-│   │   ├── exceptions.py         # 异常处理
-│   │   ├── response.py           # 统一响应
-│   │   ├── tools.py              # AI 调用工具
-│   │   └── formatters.py         # 格式化工具
+│   │   ├── redis.py              # Redis 连接池
+│   │   └── security.py           # JWT/密码安全
 │   ├── infra/                    # 基础设施层
+│   │   ├── alembic/              # 数据库迁移预留
 │   │   └── scripts/              # 运维脚本
 │   │       ├── init_db.py        # 建表 + 初始数据
 │   │       └── init_data.py      # 管理员数据生成
-│   ├── crud/                     # 数据库操作
-│   │   └── db.py                 # 数据访问层
 │   ├── model/
-│   │   ├── tables/models.py      # 数据库表模型
-│   │   └── schema/               # Pydantic 校验模型
-│   ├── main.py                   # FastAPI 入口
-│   └── task/                     # Taskiq 任务队列
-│       ├── broker.py             # 任务 Broker
-│       ├── scheduler.py          # 定时调度器
-│       └── job/                  # 任务实现
+│   │   └── models.py             # 数据库表模型
+│   ├── schema/                   # Pydantic 校验模型
+│   │   ├── admin.py
+│   │   ├── chapter.py
+│   │   ├── chat.py
+│   │   ├── class_.py
+│   │   ├── common.py
+│   │   ├── course.py
+│   │   ├── enums.py
+│   │   ├── gai_task.py
+│   │   ├── organization.py
+│   │   ├── task.py
+│   │   └── user.py
+│   ├── service/                  # 业务逻辑层
+│   │   ├── analysis_service.py   # 学情分析
+│   │   ├── auth_service.py       # 认证服务
+│   │   ├── class_service.py      # 班级服务
+│   │   ├── course_service.py     # 课程服务
+│   │   ├── organization_service.py # 组织服务
+│   │   ├── student_service.py    # 学生服务
+│   │   ├── task_service.py       # 任务服务
+│   │   └── user_service.py       # 用户服务
+│   ├── task/                     # Taskiq 任务队列
+│   │   ├── broker.py             # 任务 Broker
+│   │   ├── scheduler.py          # 定时调度器
+│   │   └── job/                  # 任务实现
+│   │       ├── course_analysis.py
+│   │       └── grading.py
+│   ├── util/                     # 工具函数
+│   │   ├── captcha_util.py       # 验证码
+│   │   └── time_util.py          # 时间工具
+│   └── main.py                   # FastAPI 入口
 │
 ├── source_code_front/            # 前端 Vue 源码
 │   ├── src/
 │   │   ├── api/                  # API 请求封装
-│   │   ├── router/               # 路由配置
+│   │   │   ├── admin.js
+│   │   │   ├── classes.js
+│   │   │   ├── course.js
+│   │   │   ├── service.js        # SSE 流式聊天/语音识别
+│   │   │   ├── student.js
+│   │   │   └── utils.js
+│   │   ├── router/               # 路由配置（含路由守卫）
 │   │   ├── views/                # 页面组件
-│   │   │   ├── student/          # 学生端页面
-│   │   │   ├── teacher/          # 教师端页面
-│   │   │   └── admin/            # 管理端页面
+│   │   │   ├── Login.vue         # 学生/教师登录页
+│   │   │   ├── student/          # 学生端页面（5 个）
+│   │   │   ├── teacher/          # 教师端页面（3 个）
+│   │   │   └── admin/            # 管理端页面（含独立登录）
 │   │   ├── components/           # 通用组件
-│   │   ├── styles/               # 全局样式
+│   │   │   ├── AppHeader.vue     # 顶部导航栏
+│   │   │   └── GAI.vue           # GAI 对话助手（含语音输入）
+│   │   ├── styles/               # 全局样式（组件级 CSS）
+│   │   │   ├── global.css
+│   │   │   ├── components/
+│   │   │   └── views/
 │   │   ├── utils/                # 工具函数
+│   │   │   ├── request.js        # Axios 实例（拦截器）
+│   │   │   ├── sseRequest.js     # SSE 流式请求封装
+│   │   │   └── mp3EncodeWorker.js # Web Worker 音频编码
 │   │   ├── App.vue               # 根组件
 │   │   └── main.js               # 入口文件
 │   ├── public/                   # 静态资源
@@ -327,21 +389,20 @@ AIEES/
 │   ├── covers/                   # 封面图片
 │   ├── pdfs/                     # PDF 文件
 │   └── videos/                   # 视频文件
-├── logs/                         # 日志文件
-│   ├── nginx/                    # Nginx 日志
-│   ├── ai.log                    # AI 调用日志
-│   ├── system.log                # 系统日志
-│   └── upstream.log              # 上游服务日志
 │
-├── .env                          # 环境变量配置
-├── docker-compose.yml            # Docker Compose 编排
-├── docker-compose.dev.yml        # 开发环境覆盖配置
 ├── fastapi/                      # 后端 Docker 构建
-│   ├── Dockerfile                # 后端镜像构建
-│   └── requirements.txt          # Python 依赖
+│   ├── Dockerfile                # 后端镜像构建（基于 uv）
+│   ├── pyproject.toml            # Python 依赖与项目配置
+│   └── uv.lock                   # 依赖锁定文件
 ├── nginx/                        # Nginx 配置目录
-│   ├── nginx.conf                # 生产 Nginx 配置
-│   └── nginx.dev.conf            # 开发 Nginx 配置
+│   └── nginx.conf                # Nginx 配置
+│
+├── .env                          # 环境变量配置（会注入 Docker 容器）
+├── .env.example                  # 环境变量模板
+├── .dockerignore                 # Docker 构建忽略规则
+├── docker-compose.yml            # Docker Compose 编排
+├── pyproject.toml                # 项目元数据（同 fastapi/pyproject.toml）
+├── uv.lock                       # 依赖锁定文件（同 fastapi/uv.lock）
 └── README.md                     # 本文件
 ```
 
@@ -396,7 +457,7 @@ class Limit:
 ### Q: 如何备份数据库？
 
 ```bash
-docker exec psql pg_dump -U postgres postgres > backup.sql
+docker compose exec db pg_dump -U postgres postgres > backup.sql
 ```
 
 ### Q: Worker 没有执行异步任务？
@@ -405,7 +466,7 @@ docker exec psql pg_dump -U postgres postgres > backup.sql
 
 ```bash
 docker compose logs worker
-docker compose exec redis redis-cli -a redis123 ping
+docker compose exec redis redis-cli -a your-redis-password ping
 ```
 
 ### Q: 如何更新前端代码？
