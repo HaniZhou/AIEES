@@ -3,9 +3,8 @@
 import json
 import re
 
-from app.core.ai_client import generate_gai_analysis_text
-from app.core.ai_client import logger as ai_logger
-from app.core.database import async_session_factory
+from app.core.ai_client import llm
+from app.core.database import db
 from app.core.logging import get_logger
 from app.core.prompts import Prompt
 from app.service.analysis_service import AnalysisService
@@ -18,7 +17,7 @@ job_logger = get_logger(__name__)
 
 async def _trigger_course_analysis(course_id: str, student_id: str, current_task_id: int, current_task_results: list):
     try:
-        async with async_session_factory() as session:
+        async with db.async_session_factory() as session:
             student_svc = StudentService(session=session)
             context_data = await student_svc.get_student_course_context(
                 course_id,
@@ -27,12 +26,12 @@ async def _trigger_course_analysis(course_id: str, student_id: str, current_task
                 current_task_results,
             )
         if not context_data:
-            ai_logger.warning(f"Analysis context empty for student {student_id} in course {course_id}")
+            llm.logger.warning(f"Analysis context empty for student {student_id} in course {course_id}")
             return
         json_str = json.dumps(context_data, ensure_ascii=False, indent=2)
         sys_prompt = Prompt.STUDENT_LEARNING_ANALYSIS_SYSTEM_PROMPT.format(json_data=json_str)
-        analysis_text = await generate_gai_analysis_text(sys_prompt, "请开始分析。")
-        async with async_session_factory() as session:
+        analysis_text = await llm.generate_analysis_text(sys_prompt, "请开始分析。")
+        async with db.async_session_factory() as session:
             analysis_svc = AnalysisService(session=session)
             await analysis_svc.upsert_student_analysis_description(
                 course_id=course_id,
@@ -41,7 +40,7 @@ async def _trigger_course_analysis(course_id: str, student_id: str, current_task
             )
             await session.commit()
     except Exception as e:
-        ai_logger.error(
+        llm.logger.error(
             f"Failed to generate/update learning analysis for student {student_id}, course {course_id}: {str(e)}"
         )
 
@@ -59,18 +58,18 @@ def _replace_id_with_content(answer, options_map: dict) -> str | list[str] | Non
 @broker.task()
 async def process_task_grading_job(task_completion_id: int, course_id: str, student_id: str, task_id: int):
     try:
-        async with async_session_factory() as session:
+        async with db.async_session_factory() as session:
             task_svc = TaskService(session=session)
             task_data = await task_svc.get_grading_data(task_completion_id)
         if not task_data:
-            ai_logger.error(f"Grading failed: Completion record {task_completion_id} not found.")
+            llm.logger.error(f"Grading failed: Completion record {task_completion_id} not found.")
             return
         quiz = task_data.get("quiz") or []
         std_answers = task_data.get("answer") or []
         student_answers = task_data.get("student_answer") or []
         total_questions = len(quiz)
         if total_questions == 0:
-            async with async_session_factory() as session:
+            async with db.async_session_factory() as session:
                 task_svc2 = TaskService(session=session)
                 await task_svc2.save_grading_result(task_completion_id, 0, "任务没有题目，无法评分")
             return
@@ -92,7 +91,7 @@ async def process_task_grading_job(task_completion_id: int, course_id: str, stud
                 continue
             q_id = q_item.get("question_id")
             if not q_id:
-                ai_logger.warning(f"Quiz item missing question_id in task {task_id}. Skipping.")
+                llm.logger.warning(f"Quiz item missing question_id in task {task_id}. Skipping.")
                 continue
             q_type = q_item.get("type")
             title = q_item.get("title", "")
@@ -110,13 +109,13 @@ async def process_task_grading_job(task_completion_id: int, course_id: str, stud
                 sys_prompt = '你是一个严格的阅卷专家。请分析学生的作答与标准答案的契合度。你必须且只能返回一个JSON格式：{"score_ratio": 0.85}。score_ratio代表该题得分在满分中的占比(0到1之间的小数)。不要返回任何其他文字。'
                 user_content = f"题目：{title}\n标准答案：{std_ans}\n学生作答：{stu_ans}"
                 try:
-                    ai_response = await generate_gai_analysis_text(sys_prompt, user_content)
+                    ai_response = await llm.generate_analysis_text(sys_prompt, user_content)
                     clean_res = ai_response.replace("```json", "").replace("```", "").strip()
                     res_json = json.loads(clean_res)
                     ratio = float(res_json.get("score_ratio", 0))
                     ratio = min(max(ratio, 0.0), 1.0)
                 except Exception as parse_err:
-                    ai_logger.warning(
+                    llm.logger.warning(
                         f"AI score JSON parse failed for task {task_id}, q {q_id}: {parse_err}. Trying regex fallback."
                     )
                     match = re.search(r"(\d+(?:\.\d+)?)", ai_response)
@@ -125,7 +124,7 @@ async def process_task_grading_job(task_completion_id: int, course_id: str, stud
                         ratio = min(max(ratio, 0.0), 1.0)
                     else:
                         ratio = 0.0
-                        ai_logger.error(f"AI score regex fallback failed for task {task_id}, q {q_id}. Score set to 0.")
+                        llm.logger.error(f"AI score regex fallback failed for task {task_id}, q {q_id}. Score set to 0.")
                 actual_score = score_per_question * ratio
             total_score += actual_score
             question_results.append(
@@ -154,20 +153,20 @@ async def process_task_grading_job(task_completion_id: int, course_id: str, stud
             analysis_user_prompt = (
                 f"学生总分：{final_score}/100。作答详情：{json.dumps(context_details, ensure_ascii=False)}"
             )
-            ai_analysis_response = await generate_gai_analysis_text(analysis_sys_prompt, analysis_user_prompt)
+            ai_analysis_response = await llm.generate_analysis_text(analysis_sys_prompt, analysis_user_prompt)
         except Exception as analysis_err:
-            ai_logger.error(
+            llm.logger.error(
                 f"Failed to generate task weakness analysis for completion {task_completion_id}: {str(analysis_err)}"
             )
             ai_analysis_response = "评分完成，但AI学情分析生成异常"
-        async with async_session_factory() as session:
+        async with db.async_session_factory() as session:
             task_svc3 = TaskService(session=session)
             await task_svc3.save_grading_result(task_completion_id, final_score, ai_analysis_response)
         await _trigger_course_analysis(course_id, student_id, task_id, question_results)
     except Exception as e:
-        ai_logger.error(f"Unexpected error in grading job for completion {task_completion_id}: {str(e)}")
+        llm.logger.error(f"Unexpected error in grading job for completion {task_completion_id}: {str(e)}")
         try:
-            async with async_session_factory() as session:
+            async with db.async_session_factory() as session:
                 task_svc4 = TaskService(session=session)
                 await task_svc4.save_grading_result(task_completion_id, 0, f"评分过程发生系统异常: {str(e)}")
         except BaseException:

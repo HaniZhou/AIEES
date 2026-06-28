@@ -493,15 +493,17 @@ const submitOrgForm = async () => {
     phase: orgForm.phase,
     prefix: formatPrefix(orgForm.prefix.trim())
   }
-  if (orgModalMode.value === 'add') {
-    await createOrganization(payload)
-    showToast({ message: '创建成功', type: 'success' })
-  } else {
-    payload.organization_id = selectedOrg.value.organization_id
-    await updateOrganization(payload)
-    selectedOrg.value = { ...selectedOrg.value, ...payload }
-    showToast({ message: '修改成功', type: 'success' })
-  }
+  try {
+    if (orgModalMode.value === 'add') {
+      await createOrganization(payload)
+      showToast({ message: '创建成功', type: 'success' })
+    } else {
+      payload.organization_id = selectedOrg.value.organization_id
+      await updateOrganization(payload)
+      selectedOrg.value = { ...selectedOrg.value, ...payload }
+      showToast({ message: '修改成功', type: 'success' })
+    }
+  } catch {}
   showOrgModal.value = false
   fetchOrgs(true)
 }
@@ -589,19 +591,21 @@ const submitClassForm = async () => {
   if (!classForm.class_name.trim()) {
     return showToast('班级名称不能为空')
   }
-  if (classModalMode.value === 'add') {
-    await createClass({
-      class_name: classForm.class_name.trim(),
-      organization_id: selectedOrg.value.organization_id
-    })
-    showToast({ message: '添加成功', type: 'success' })
-  } else {
-    await updateClass({
-      class_id: classForm.class_id,
-      class_name: classForm.class_name.trim()
-    })
-    showToast({ message: '修改成功', type: 'success' })
-  }
+  try {
+    if (classModalMode.value === 'add') {
+      await createClass({
+        class_name: classForm.class_name.trim(),
+        organization_id: selectedOrg.value.organization_id
+      })
+      showToast({ message: '添加成功', type: 'success' })
+    } else {
+      await updateClass({
+        class_id: classForm.class_id,
+        class_name: classForm.class_name.trim()
+      })
+      showToast({ message: '修改成功', type: 'success' })
+    }
+  } catch {}
   showClassModal.value = false
   fetchClasses(true)
 }

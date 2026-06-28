@@ -1,73 +1,79 @@
-""" 数据库引擎与会话工厂（核心配置，独立于业务层） """
+"""数据库引擎与会话工厂封装"""
+
 import time
 
-from sqlalchemy import event, text
+from sqlalchemy import event
 from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
 from sqlmodel.ext.asyncio.session import AsyncSession
 
 from app.core.config import DBConfig, LogConfig
 from app.core.logging import get_logger
 
-#  连接字符串构建
-_url = DBConfig.DATABASE_URL
 
-#  异步引擎初始化
-engine = create_async_engine(
-    _url,
-    echo=False,
-    pool_size=20,
-    max_overflow=10,
-    pool_pre_ping=True,
-    pool_timeout=30,
-)
+class Database:
+    def __init__(self):
+        self.engine = create_async_engine(
+            DBConfig.DATABASE_URL,
+            echo=False,
+            pool_size=DBConfig.POOL_SIZE,
+            max_overflow=DBConfig.MAX_OVERFLOW,
+            pool_pre_ping=DBConfig.POOL_PRE_PING,
+            pool_timeout=DBConfig.POOL_TIMEOUT,
+            pool_recycle=DBConfig.POOL_RECYCLE,
+        )
+        self._logger = get_logger("app.core.database.slow")
+        self._setup_slow_query_listener()
+        self.async_session_factory = async_sessionmaker(
+            self.engine,
+            class_=AsyncSession,
+            expire_on_commit=False,
+        )
 
-#  慢查询监听（只记超过阈值的 SQL，不记参数，截断 120 字符）
-db_logger = get_logger("app.core.database.slow")
-
-
-def _setup_slow_query_listener():
-    if LogConfig.SLOW_QUERY_MS <= 0:
-        return
-
-    @event.listens_for(engine.sync_engine, "before_cursor_execute")
-    def _before(conn, cursor, statement, parameters, context, executemany):
-        conn._query_start_time = time.perf_counter()
-        conn._query_statement = statement
-
-    @event.listens_for(engine.sync_engine, "after_cursor_execute")
-    def _after(conn, cursor, statement, parameters, context, executemany):
-        start = getattr(conn, "_query_start_time", None)
-        if start is None:
+    def _setup_slow_query_listener(self):
+        """注册SQL执行前后钩子，记录超过阈值的慢查询语句"""
+        if LogConfig.SLOW_QUERY_MS <= 0:
             return
-        total_ms = int((time.perf_counter() - start) * 1000)
-        if total_ms >= LogConfig.SLOW_QUERY_MS:
-            stmt = conn._query_statement or statement
-            db_logger.warning("Slow query (%dms): %.120s", total_ms, stmt)
 
+        @event.listens_for(self.engine.sync_engine, "before_cursor_execute")
+        def _before(conn, cursor, statement, parameters, context, executemany):
+            conn.info["query_start_time"] = time.perf_counter()
+            conn.info["query_statement"] = statement
 
-_setup_slow_query_listener()
+        @event.listens_for(self.engine.sync_engine, "after_cursor_execute")
+        def _after(conn, cursor, statement, parameters, context, executemany):
+            start = conn.info.pop("query_start_time", None)
+            if start is None:
+                return
+            stmt = conn.info.pop("query_statement", None) or statement
+            total_ms = int((time.perf_counter() - start) * 1000)
+            if total_ms >= LogConfig.SLOW_QUERY_MS:
+                self._logger.warning("Slow query (%dms): %.120s", total_ms, stmt)
 
-#  异步会话工厂
-async_session_factory = async_sessionmaker(
-    engine,
-    class_=AsyncSession,
-    expire_on_commit=False,
-)
-
-#  连接池预热
-async def warmup_connection_pool() -> None:
-    """函数目的：在应用启动时执行一次轻量查询，预热 asyncpg 连接池，防止首次真实请求冷启动超时。
-    """
-    async with engine.connect() as conn:
-        await conn.execute(text("SELECT 1"))
-
-
-async def get_session():
-    """FastAPI 依赖：提供异步会话，请求结束时自动 commit/rollback"""
-    async with async_session_factory() as session:
+    async def warmup_pool(self):
+        """预热连接池，提前创建核心连接，降低首请求延迟"""
+        connections = []
         try:
-            yield session
-            await session.commit()
-        except Exception:
-            await session.rollback()
-            raise
+            for _ in range(DBConfig.POOL_SIZE):
+                conn = await self.engine.connect()
+                connections.append(conn)
+        finally:
+            for conn in connections:
+                await conn.close()
+
+    async def get_session(self):
+        """异步会话生成函数，自动管理事务，异常自动回滚、正常自动提交"""
+        async with self.async_session_factory() as session:
+            try:
+                yield session
+                # Service 层不手动 commit；Service 代码只关心业务逻辑，无需操心事务提交 / 回滚的边界；
+                await session.commit()
+            except Exception:
+                await session.rollback()
+                raise
+
+    async def dispose(self):
+        """销毁连接池所有连接，释放数据库资源"""
+        await self.engine.dispose()
+
+
+db = Database()

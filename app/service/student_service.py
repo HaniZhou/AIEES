@@ -4,8 +4,8 @@ from sqlalchemy.orm.attributes import flag_modified
 from sqlmodel import select
 from sqlmodel.ext.asyncio.session import AsyncSession
 
+from app.core.database import db
 from app.core.exceptions import AppBusinessException
-from app.core.database import get_session
 from app.model.models import (
     AnalysisTask,
     AnalysisTaskCompletion,
@@ -28,7 +28,7 @@ from fastapi import Depends
 class StudentService:
     """学生端: 学习进度、统计"""
 
-    def __init__(self, session: AsyncSession = Depends(get_session)):
+    def __init__(self, session: AsyncSession = Depends(db.get_session)):
         self.session = session
 
     async def get_weekly_study(self, student_id: str) -> list[int]:

@@ -1,10 +1,10 @@
 from sqlmodel import select
 from sqlmodel.ext.asyncio.session import AsyncSession
 
-from app.core.exceptions import AppBusinessException
 from app.common.pagination import paginate
 from app.common.tools import is_deletable_resource_path, remove_file, to_upload_relative_path
-from app.core.database import get_session
+from app.core.database import db
+from app.core.exceptions import AppBusinessException
 from app.model.models import (
     AnalysisTask,
     AnalysisTaskCompletion,
@@ -24,7 +24,7 @@ from fastapi import Depends
 class OrganizationService:
     """机构管理"""
 
-    def __init__(self, session: AsyncSession = Depends(get_session)):
+    def __init__(self, session: AsyncSession = Depends(db.get_session)):
         self.session = session
 
     async def create(self, org_name: str, phase, prefix: str = "") -> int:

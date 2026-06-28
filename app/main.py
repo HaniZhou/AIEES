@@ -14,7 +14,7 @@ from app.api.v1.student import router as student_router
 from app.core.config import CORSConfig, UrlConfig
 
 # 导入连接池预热
-from app.core.database import engine, warmup_connection_pool
+from app.core.database import db
 
 # 导入异常处理器
 # 导入业务异常类
@@ -33,7 +33,7 @@ from app.core.logging import configure_logging
 from app.core.middleware import RequestIDMiddleware
 
 # 导入 Redis 连接池关闭
-from app.core.redis import close_redis_pools
+from app.core.redis import redis_client
 from fastapi import FastAPI, HTTPException
 
 
@@ -51,15 +51,15 @@ async def lifespan(app: FastAPI):
         raise
 
     # 预热连接池，确保 asyncpg 连接就绪
-    await warmup_connection_pool()
+    await db.warmup_pool()
 
     yield
 
     # ==================== 关闭阶段 ====================
     # 关闭数据库连接池
-    await engine.dispose()
+    await db.dispose()
     # 关闭 Redis 双池
-    await close_redis_pools()
+    await redis_client.close()
 
 
 app = FastAPI(lifespan=lifespan)
@@ -82,8 +82,8 @@ app.add_middleware(
     CORSMiddleware,
     allow_origins=CORSConfig.CORS_ALLOW_ORIGINS,
     allow_credentials=True,
-    allow_methods=CORSConfig.CORS_ALLOW_METHODS,
-    allow_headers=CORSConfig.CORS_ALLOW_HEADERS,
+    allow_methods=CORSConfig.CORS_ALLOW_METHODS_LIST,
+    allow_headers=CORSConfig.CORS_ALLOW_HEADERS_LIST,
     max_age=600,
 )
 
@@ -102,14 +102,11 @@ async def health():
     """健康检查端点（用于 Docker Compose healthcheck / K8s liveness probe）。"""
     from sqlmodel import select
 
-    from app.core.database import async_session_factory
-    from app.core.redis import get_redis
-
     checks = {"status": "healthy", "db": False, "redis": False}
 
     # 检查 PostgreSQL
     try:
-        async with async_session_factory() as session:
+        async with db.async_session_factory() as session:
             await session.exec(select(1))
         checks["db"] = True
     except Exception:
@@ -117,7 +114,7 @@ async def health():
 
     # 检查 Redis
     try:
-        redis = get_redis()
+        redis = redis_client.get_client()
         await redis.ping()
         checks["redis"] = True
     except Exception:

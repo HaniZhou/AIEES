@@ -1,8 +1,8 @@
 from typing import Annotated
 
 from app.api.dependencies import require_admin
-from app.core.exceptions import AppBusinessException
 from app.common.response import response_created, response_success
+from app.core.exceptions import AppBusinessException
 from app.core.logging import get_logger
 from app.core.security import get_password_hash
 from app.schema.admin import StudentUpdate, TeacherUpdate

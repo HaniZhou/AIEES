@@ -110,8 +110,12 @@ const handleLogin = async () => {
 
   loading.value = true
 
-  const res = await adminAuth(payload).catch(() => {
+  const res = await adminAuth(payload).catch((err) => {
     loading.value = false
+    if (err.response?.data) {
+      return err.response.data
+    }
+    return null
   })
 
   if (!res) return

@@ -9,10 +9,10 @@ from fastapi.sse import EventSourceResponse, ServerSentEvent
 from app.api.dependencies import require_student, require_teacher, validate_asr_file
 from app.common.response import response_success
 from app.common.tools import write_resource
-from app.core.ai_client import asr_logger, generate_asr_reply_stream, generate_gai_reply_stream
+from app.core.ai_client import llm, asr
 from app.core.config import Limit
 from app.core.prompts import Prompt
-from app.core.rate_limiter import asr_rate_limit
+from app.core.rate_limiter import rate_limiter
 from app.core.security import verify_token_return_payload
 from app.schema.chat import ChatRequest
 from app.schema.enums import ScenarioType
@@ -48,7 +48,7 @@ async def chat_stream_student(
         messages[0]["content"] = system_prompt
     client_disconnected = False
     try:
-        async for text_chunk in generate_gai_reply_stream(messages):
+        async for text_chunk in llm.generate_reply_stream(messages):
             yield ServerSentEvent(data={"content": text_chunk}, event="token")
             if await request.is_disconnected():
                 client_disconnected = True
@@ -76,7 +76,7 @@ async def chat_stream_teacher(
 
     client_disconnected = False
     try:
-        async for text_chunk in generate_gai_reply_stream(messages):
+        async for text_chunk in llm.generate_reply_stream(messages):
             yield ServerSentEvent(data={"content": text_chunk}, event="token")
             if await request.is_disconnected():
                 client_disconnected = True
@@ -105,7 +105,7 @@ async def chat_stream_gai(
         messages[0]["content"] = system_prompt
     client_disconnected = False
     try:
-        async for text_chunk in generate_gai_reply_stream(messages):
+        async for text_chunk in llm.generate_reply_stream(messages):
             yield ServerSentEvent(data={"content": text_chunk}, event="token")
             if await request.is_disconnected():
                 client_disconnected = True
@@ -123,7 +123,7 @@ async def speech_to_text_stream(
         request: Request,
         # 关键修复：将文件校验作为依赖注入，确保在流式响应建立前拦截 400 错误
         asr_file_data: dict = Depends(validate_asr_file),
-        token_data: TokenData = Depends(asr_rate_limit)
+        token_data: TokenData = Depends(rate_limiter.asr_rate_limit)
 ) -> AsyncIterable[ServerSentEvent]:
     """流式音频文件上传识别接口"""
 
@@ -153,7 +153,7 @@ async def speech_to_text_stream(
     client_disconnected = False
 
     try:
-        async for text_chunk in generate_asr_reply_stream(messages):
+        async for text_chunk in asr.generate_reply_stream(messages):
             yield ServerSentEvent(data={"content": text_chunk}, event="token")
             if await request.is_disconnected():
                 client_disconnected = True
@@ -163,7 +163,7 @@ async def speech_to_text_stream(
         yield ServerSentEvent(data={"error": "语音识别服务暂时不可用"}, event="error")
     except Exception as e:
         # 拦截推流中途断开或其他未预料异常，转为 SSE error 事件
-        asr_logger.error(f"Unexpected error during ASR streaming: {str(e)}")
+        asr.logger.error(f"Unexpected error during ASR streaming: {str(e)}")
         yield ServerSentEvent(data={"error": "语音识别中断，请重试"}, event="error")
 
     if not client_disconnected:

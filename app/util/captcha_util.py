@@ -1,10 +1,11 @@
 import base64
 import io
-from app.core.logging import get_logger
 import random
 import uuid
 
 from PIL import Image, ImageDraw, ImageFont
+
+from app.core.logging import get_logger
 
 logger = get_logger(__name__)
 

@@ -2,18 +2,11 @@
 
 from datetime import timedelta
 
-from app.core.exceptions import AppBusinessException
 from app.common.response import response_success
 from app.core.config import SecretConfig
+from app.core.exceptions import AppBusinessException
 from app.core.logging import get_logger
-from app.core.rate_limiter import (
-    check_login_status,
-    clear_login_failures,
-    record_login_failure,
-    store_captcha,
-    verify_captcha,
-)
-from app.core.redis import get_redis
+from app.core.rate_limiter import rate_limiter
 from app.core.security import (
     create_access_token,
     get_password_hash,
@@ -33,11 +26,9 @@ auth_route_logger = get_logger(__name__)
 
 @router.get("/captcha")
 async def get_captcha():
-    redis_client = get_redis()
     captcha_data = generate_math_captcha()
 
-    await store_captcha(
-        redis_client,
+    await rate_limiter.store_captcha(
         captcha_data["captcha_key"],
         captcha_data["_answer"],
     )
@@ -55,10 +46,9 @@ async def login_for_access_token(
     login_form: UserLogin,
     auth_svc: AuthService = Depends(AuthService),
 ):
-    redis_client = get_redis()
     user_id = login_form.id
 
-    status_info = await check_login_status(redis_client, user_id)
+    status_info = await rate_limiter.check_login_status(user_id)
 
     if status_info["status"] == "locked":
         remain_min = (status_info["lock_ttl"] or 900) // 60
@@ -75,7 +65,7 @@ async def login_for_access_token(
                 "登录失败次数过多，请获取验证码后重试",
                 data={"need_captcha": True, "fail_count": status_info["fail_count"]},
             )
-        if not await verify_captcha(redis_client, login_form.captcha_key, login_form.captcha_code):
+        if not await rate_limiter.verify_captcha(login_form.captcha_key, login_form.captcha_code):
             raise AppBusinessException(
                 400,
                 "验证码错误或已过期",
@@ -85,7 +75,7 @@ async def login_for_access_token(
     user = await auth_svc.authenticate_user(login_form.id, login_form.password, login_form.role)
 
     if not user:
-        failure_info = await record_login_failure(redis_client, user_id)
+        failure_info = await rate_limiter.record_login_failure(user_id)
         response_data = {}
         if failure_info["status"] in ("need_captcha", "locked"):
             response_data["need_captcha"] = True
@@ -98,7 +88,7 @@ async def login_for_access_token(
         )
         raise AppBusinessException(401, "登录失败，用户名或密码错误", data=response_data)
 
-    await clear_login_failures(redis_client, user_id)
+    await rate_limiter.clear_login_failures(user_id)
 
     try:
         access_token_expires = timedelta(minutes=SecretConfig.ACCESS_TOKEN_EXPIRE_MINUTES)

@@ -1,9 +1,10 @@
-""" 数据格式化与校验工具函数 """
+"""数据格式化与校验工具函数"""
+
 from app.core.exceptions import AppBusinessException
 
 
 def _validate_task_payload_consistency(quiz: list[dict], answer: list[dict]) -> None:
-
+    """校验题目与答案的ID映射关系及各题型答案字段格式，不匹配则抛异常。"""
     quiz_ids = {q.get("question_id") for q in quiz if q.get("question_id")}
     answer_ids = {a.get("question_id") for a in answer if a.get("question_id")}
 

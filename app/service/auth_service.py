@@ -1,7 +1,7 @@
 from sqlmodel import select
 from sqlmodel.ext.asyncio.session import AsyncSession
 
-from app.core.database import get_session
+from app.core.database import db
 from app.core.logging import get_logger
 from app.core.security import verify_password
 from app.model.models import Admin, Organization, Student, StudentClass, Teacher
@@ -15,7 +15,7 @@ auth_logger = get_logger(__name__)
 class AuthService:
     """登录、验证码、密码修改"""
 
-    def __init__(self, session: AsyncSession = Depends(get_session)):
+    def __init__(self, session: AsyncSession = Depends(db.get_session)):
         self.session = session
 
     async def get_user_info(self, user_id: str, role: RoleType) -> dict | None:

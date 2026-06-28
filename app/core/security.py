@@ -1,5 +1,5 @@
-""" 安全配置相关的函数和工具，例如密码哈希、JWT 生成和验证等 """
-from app.core.logging import get_logger
+"""安全配置相关的函数和工具，例如密码哈希、JWT 生成和验证等"""
+
 from datetime import UTC, datetime, timedelta
 from typing import Annotated
 
@@ -9,6 +9,7 @@ from jwt.exceptions import InvalidTokenError
 from pwdlib import PasswordHash
 
 from app.core.config import SecretConfig
+from app.core.logging import get_logger
 from app.schema.enums import PhaseType
 from app.schema.user import TokenData
 from fastapi import Depends, HTTPException, status
@@ -26,10 +27,8 @@ def verify_password(plain_password, hashed_password):
 
 
 def get_password_hash(password):
-    """ return hashed password """
+    """return hashed password"""
     return password_hash.hash(password)
-
-
 
 
 def create_access_token(payload: dict, expires_delta: timedelta | None = None):

@@ -6,7 +6,7 @@ from sqlmodel.ext.asyncio.session import AsyncSession
 
 from app.common.formatters import _validate_task_payload_consistency
 from app.common.tools import is_deletable_resource_path, remove_file, to_upload_relative_path
-from app.core.database import get_session
+from app.core.database import db
 from app.core.exceptions import AppBusinessException
 from app.model.models import (
     AnalysisDescription,
@@ -32,7 +32,7 @@ from fastapi import Depends
 class CourseService:
     """课程管理 (封面+章节+注册)"""
 
-    def __init__(self, session: AsyncSession = Depends(get_session)):
+    def __init__(self, session: AsyncSession = Depends(db.get_session)):
         self.session = session
 
     async def create_course_with_students(self, course_info: CourseInfo, class_names: list[str]) -> uuid.UUID:

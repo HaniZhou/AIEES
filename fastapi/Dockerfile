@@ -50,6 +50,4 @@ COPY app/ /app/app/
 
 EXPOSE 8000
 
-CMD ["sh", "-c", "exec gunicorn app.main:app --workers=$(nproc) --worker-class uvicorn.workers.UvicornWorker --bind 0.0.0.0:8000  --timeout=120 --graceful-timeout=30"]
-
-#CMD ["gunicorn", "app.main:app", "--workers", "32", "--worker-class", "uvicorn.workers.UvicornWorker", "--bind", "0.0.0.0:8000"]
+CMD ["sh", "-c", "exec gunicorn app.main:app --workers=${FASTAPI_CPUS:-2} --worker-class uvicorn.workers.UvicornWorker --bind 0.0.0.0:8000  --timeout=300 --graceful-timeout=30"]

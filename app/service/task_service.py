@@ -4,8 +4,8 @@ from datetime import UTC, datetime
 from sqlmodel import select
 from sqlmodel.ext.asyncio.session import AsyncSession
 
+from app.core.database import db
 from app.core.exceptions import AppBusinessException
-from app.core.database import get_session
 from app.model.models import (
     AnalysisTask,
     AnalysisTaskCompletion,
@@ -24,7 +24,7 @@ from fastapi import Depends
 class TaskService:
     """任务 CRUD + 提交 + 评分触发"""
 
-    def __init__(self, session: AsyncSession = Depends(get_session)):
+    def __init__(self, session: AsyncSession = Depends(db.get_session)):
         self.session = session
 
     async def submit_task_answer(self, course_id: uuid.UUID, task_id: int, student_id: str, answers: list) -> int:
@@ -89,7 +89,7 @@ class TaskService:
             course_id=course_id,
         )
         self.session.add(completion_record)
-        await self.session.flush()
+        await self.session.commit()
         await self.session.refresh(completion_record)
         return completion_record.completion_id
 

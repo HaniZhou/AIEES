@@ -24,6 +24,7 @@ class AppBusinessException(Exception):
     """业务阻断异常。
     code 参数必须使用真实 HTTP 状态码:
         400 - 参数错误/业务冲突
+        401 - 认证失败/未登录
         403 - 无权限
         404 - 资源不存在
         409 - 资源冲突（如已提交过答案）
@@ -33,7 +34,7 @@ class AppBusinessException(Exception):
     """
 
     def __init__(self, code: int, message: str, data: dict | None = None, log_module: str = "db"):
-        assert code in (400, 403, 404, 409, 429, 500, 502), f"业务异常 code 必须为 HTTP 状态码，收到: {code}"
+        assert code in (400, 401, 403, 404, 409, 413, 429, 500, 502), f"业务异常 code 必须为 HTTP 状态码，收到: {code}"
         self.code = code
         self.message = message
         self.data = data if data is not None else {}

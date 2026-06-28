@@ -7,20 +7,21 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 class CORSConfig(BaseSettings):
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
 
-    CORS_ORIGINS: str = "http://localhost:5173,http://127.0.0.1:5173"
-    CORS_ALLOW_METHODS: list[str] = ["GET", "POST", "OPTIONS", "PUT", "DELETE", "PATCH"]
-    CORS_ALLOW_HEADERS: list[str] = [
-        "Content-Type",
-        "Authorization",
-        "Accept",
-        "Origin",
-        "X-Requested-With",
-        "X-Request-Id",
-    ]
+    CORS_ORIGINS: str = Field(...)
+    CORS_ALLOW_METHODS: str = Field(...)
+    CORS_ALLOW_HEADERS: str = Field(...)
 
     @computed_field
     def CORS_ALLOW_ORIGINS(self) -> list[str]:
         return [o.strip() for o in self.CORS_ORIGINS.split(",") if o.strip()]
+
+    @computed_field
+    def CORS_ALLOW_METHODS_LIST(self) -> list[str]:
+        return [m.strip() for m in self.CORS_ALLOW_METHODS.split(",") if m.strip()]
+
+    @computed_field
+    def CORS_ALLOW_HEADERS_LIST(self) -> list[str]:
+        return [h.strip() for h in self.CORS_ALLOW_HEADERS.split(",") if h.strip()]
 
 
 CORSConfig = CORSConfig()
@@ -29,13 +30,13 @@ CORSConfig = CORSConfig()
 class SecretConfig(BaseSettings):
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
 
-    # JTW 加密
-    SECRET_KEY: str
+    # JWT 加密
+    SECRET_KEY: str = Field(...)
     ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 1440
     # 后端管理员
-    ADMIN_NAME: str
-    ADMIN_PASSWORD: str
+    ADMIN_NAME: str = Field(...)
+    ADMIN_PASSWORD: str = Field(...)
 
 
 SecretConfig = SecretConfig()
@@ -53,7 +54,7 @@ class UrlConfig(BaseSettings):
     VIDEO_DIR: Path = Path("/app/static/uploads/videos")
 
     def init_directories(self):
-        for dir_path in [self.STATIC_DIR,self.UPLOAD_DIR, self.COVERS_DIR, self.PDF_DIR, self.VIDEO_DIR]:
+        for dir_path in [self.STATIC_DIR, self.UPLOAD_DIR, self.COVERS_DIR, self.PDF_DIR, self.VIDEO_DIR]:
             dir_path.mkdir(parents=True, exist_ok=True)
 
 
@@ -84,10 +85,10 @@ Limit = Limit()
 class AIConfig(BaseSettings):
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
 
-    AI_BASE_URL: str
-    AI_MODEL_TEXT: str
-    AI_MODEL_ASR: str
-    AI_API_KEY: str
+    AI_BASE_URL: str = Field(...)
+    AI_MODEL_TEXT: str = Field(...)
+    AI_MODEL_ASR: str = Field(...)
+    AI_API_KEY: str = Field(...)
 
 
 AIConfig = AIConfig()
@@ -95,16 +96,25 @@ AIConfig = AIConfig()
 
 class DBConfig(BaseSettings):
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
-    DB_HOST: str
-    DB_PORT: int
-    DB_NAME: str
-    DB_USER: str
-    DB_PASSWORD: str
+
+    # DB base configuration
+    DB_HOST: str= Field(...)
+    DB_PORT: int= Field(...)
+    DB_NAME: str= Field(...)
+    DB_USER: str= Field(...)
+    DB_PASSWORD: str= Field(...)
+
+    # connection configuration
+    POOL_SIZE: int = Field(...)
+    MAX_OVERFLOW: int = Field(...)
+    POOL_PRE_PING: bool = Field(...)
+    POOL_TIMEOUT: int = Field(...)
+    POOL_RECYCLE: int = Field(...)
 
     @computed_field
     def DATABASE_URL(self) -> str:
         return (
-            f"postgresql+asyncpg://{DBConfig.DB_USER}:{DBConfig.DB_PASSWORD}"
+            f"postgresql+asyncpg://{self.DB_USER}:{self.DB_PASSWORD}"
             f"@{self.DB_HOST}:{self.DB_PORT}/{self.DB_NAME}"
         )
 
@@ -114,9 +124,9 @@ DBConfig = DBConfig()
 
 class RedisConfig(BaseSettings):
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
-    REDIS_HOST: str
-    REDIS_PORT: int
-    REDIS_PASSWORD: str
+    REDIS_HOST: str= Field(...)
+    REDIS_PORT: int= Field(...)
+    REDIS_PASSWORD: str= Field(...)
 
     @computed_field
     def REDIS_URL(self) -> str:
@@ -129,8 +139,8 @@ RedisConfig = RedisConfig()
 class LogConfig(BaseSettings):
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
 
-    LOG_LEVEL: str = "INFO"
-    SLOW_QUERY_MS: int = 500
+    LOG_LEVEL: str = Field(...)
+    SLOW_QUERY_MS: int = Field(...)
 
 
 LogConfig = LogConfig()

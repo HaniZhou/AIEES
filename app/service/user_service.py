@@ -1,9 +1,9 @@
 from sqlmodel import select
 from sqlmodel.ext.asyncio.session import AsyncSession
 
-from app.core.exceptions import AppBusinessException
 from app.common.tools import is_deletable_resource_path, remove_file, to_upload_relative_path
-from app.core.database import get_session
+from app.core.database import db
+from app.core.exceptions import AppBusinessException
 from app.model.models import Admin, Chapter, Course, Section, Student, StudentClass, Teacher
 from app.schema.user import UserInDB
 from fastapi import Depends
@@ -12,7 +12,7 @@ from fastapi import Depends
 class UserService:
     """用户创建/更新（含角色分发）"""
 
-    def __init__(self, session: AsyncSession = Depends(get_session)):
+    def __init__(self, session: AsyncSession = Depends(db.get_session)):
         self.session = session
 
     async def create_student(self, user: UserInDB) -> bool:

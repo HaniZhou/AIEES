@@ -6,12 +6,12 @@ import asyncio
 
 from sqlmodel import SQLModel
 
-from app.core.database import engine
+from app.core.database import db
 from app.infra.scripts.init_data import init_mock_data
 
 
 async def create_tables():
-    async with engine.begin() as conn:
+    async with db.engine.begin() as conn:
         await conn.run_sync(SQLModel.metadata.create_all)
 
 

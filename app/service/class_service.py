@@ -1,7 +1,7 @@
 from sqlmodel import select
 from sqlmodel.ext.asyncio.session import AsyncSession
 
-from app.core.database import get_session
+from app.core.database import db
 from app.core.exceptions import AppBusinessException
 from app.model.models import StudentClass
 from fastapi import Depends
@@ -10,7 +10,7 @@ from fastapi import Depends
 class ClassService:
     """班级管理"""
 
-    def __init__(self, session: AsyncSession = Depends(get_session)):
+    def __init__(self, session: AsyncSession = Depends(db.get_session)):
         self.session = session
 
     async def create(self, class_name: str, organization_id: int) -> tuple[int, int]:

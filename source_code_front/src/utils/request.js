@@ -38,20 +38,16 @@ request.interceptors.response.use(
                     showToast(serverMsg || '请求参数有误');
                     break;
                 case 401:
+                    showToast(serverMsg || '登录已过期，请重新登录');
                     localStorage.clear();
-                    // 延迟跳转，让用户看到提示
                     setTimeout(() => {
-                        if (window.location.pathname !== '/') {
-                            window.location.href = '/';
+                        const loginPath = window.location.pathname.startsWith('/admin') ? '/admin/login' : '/';
+                        if (window.location.pathname !== loginPath) {
+                            window.location.href = loginPath;
                         }
                     }, 2000);
                     break;
                 case 403:
-                    showToast('没有权限进行此操作');
-                    //跳转回上级页面
-                    setTimeout(() => {
-                        window.history.back();
-                    }, 2000);
                     break;
                 case 404:
                     showToast('请求的资源不存在');

@@ -1,9 +1,9 @@
 from sqlmodel import select
 from sqlmodel.ext.asyncio.session import AsyncSession
 
+from app.core.ai_client import llm
+from app.core.database import db
 from app.core.exceptions import AppBusinessException
-from app.core.ai_client import generate_gai_analysis_text
-from app.core.database import async_session_factory, get_session
 from app.core.logging import get_logger
 from app.core.prompts import Prompt
 from app.model.models import AnalysisDescription, AnalysisTask, AnalysisTaskCompletion, Course, CourseRegistrationRecord
@@ -16,7 +16,7 @@ analysis_logger = get_logger(f"{__name__}.analysis")
 class AnalysisService:
     """GAI 分析任务 + AI 评估"""
 
-    def __init__(self, session: AsyncSession = Depends(get_session)):
+    def __init__(self, session: AsyncSession = Depends(db.get_session)):
         self.session = session
 
     async def get_analysis_task_info(self, task_id: int) -> dict | None:
@@ -130,7 +130,7 @@ class AnalysisService:
     async def execute_gai_analysis(self, task_id: int, completion_id: int, messages: list) -> None:
         """后台执行 GAI 分析，使用独立 session 隔离事务（因含长时间 AI API 调用）"""
         try:
-            async with async_session_factory() as session:
+            async with db.async_session_factory() as session:
                 stmt = select(AnalysisTask).where(AnalysisTask.analysis_task_id == task_id)
                 task = (await session.exec(stmt)).one_or_none()
                 task_info = (
@@ -144,7 +144,7 @@ class AnalysisService:
                 )
 
             if not task_info:
-                async with async_session_factory() as session:
+                async with db.async_session_factory() as session:
                     stmt = select(AnalysisTaskCompletion).where(AnalysisTaskCompletion.completion_id == completion_id)
                     record = (await session.exec(stmt)).one_or_none()
                     if record:
@@ -163,8 +163,8 @@ class AnalysisService:
             chat_history = "\n".join([f"{msg.get('role', 'unknown')}: {msg.get('content', '')}" for msg in messages])
             user_content = f"<INPUT_DATA>\n{chat_history}\n</INPUT_DATA>"
 
-            analysis_text = await generate_gai_analysis_text(system_prompt, user_content)
-            async with async_session_factory() as session:
+            analysis_text = await llm.generate_analysis_text(system_prompt, user_content)
+            async with db.async_session_factory() as session:
                 stmt = select(AnalysisTaskCompletion).where(AnalysisTaskCompletion.completion_id == completion_id)
                 record = (await session.exec(stmt)).one_or_none()
                 if record:
@@ -175,7 +175,7 @@ class AnalysisService:
             analysis_logger.error(
                 f"GAI analysis execution failed, task_id={task_id}, completion_id={completion_id}, error: {str(e)}"
             )
-            async with async_session_factory() as session:
+            async with db.async_session_factory() as session:
                 stmt = select(AnalysisTaskCompletion).where(AnalysisTaskCompletion.completion_id == completion_id)
                 record = (await session.exec(stmt)).one_or_none()
                 if record:
