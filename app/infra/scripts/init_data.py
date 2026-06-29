@@ -10,7 +10,7 @@ async def init_mock_data():
     async with db.async_session_factory() as session:
         if not (await session.exec(select(Admin).where(Admin.id == "Admin"))).one_or_none():
             session.add(Admin(
-                id="Admin",
+                id=SecretConfig.ADMIN_NAME,
                 username=SecretConfig.ADMIN_NAME,
                 hashed_password=get_password_hash(SecretConfig.ADMIN_PASSWORD),
             ))
