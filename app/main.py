@@ -80,10 +80,10 @@ app.add_exception_handler(Exception, global_system_exception_handler)
 # ==================== 中间件与路由 ====================
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=CORSConfig.CORS_ALLOW_ORIGINS,
+    allow_origins=CORSConfig.CORS_ORIGINS,
     allow_credentials=True,
-    allow_methods=CORSConfig.CORS_ALLOW_METHODS_LIST,
-    allow_headers=CORSConfig.CORS_ALLOW_HEADERS_LIST,
+    allow_methods=CORSConfig.CORS_ALLOW_METHODS,
+    allow_headers=CORSConfig.CORS_ALLOW_HEADERS,
     max_age=600,
 )
 

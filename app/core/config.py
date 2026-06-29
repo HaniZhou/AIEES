@@ -1,27 +1,23 @@
 from pathlib import Path
+from typing import Annotated
 
-from pydantic import Field, computed_field
-from pydantic_settings import BaseSettings, SettingsConfigDict
+from pydantic import Field, computed_field, field_validator
+from pydantic_settings import BaseSettings, NoDecode, SettingsConfigDict
 
 
 class CORSConfig(BaseSettings):
-    model_config = SettingsConfigDict(env_file=".env", extra="ignore")
+    model_config = SettingsConfigDict(env_file=".env", extra="ignore", enable_decoding=False)
 
-    CORS_ORIGINS: str = Field(...)
-    CORS_ALLOW_METHODS: str = Field(...)
-    CORS_ALLOW_HEADERS: str = Field(...)
+    CORS_ORIGINS: Annotated[list[str], NoDecode()] = Field(...)
+    CORS_ALLOW_METHODS: Annotated[list[str], NoDecode()] = Field(...)
+    CORS_ALLOW_HEADERS: Annotated[list[str], NoDecode()] = Field(...)
 
-    @computed_field
-    def CORS_ALLOW_ORIGINS(self) -> list[str]:
-        return [o.strip() for o in self.CORS_ORIGINS.split(",") if o.strip()]
-
-    @computed_field
-    def CORS_ALLOW_METHODS_LIST(self) -> list[str]:
-        return [m.strip() for m in self.CORS_ALLOW_METHODS.split(",") if m.strip()]
-
-    @computed_field
-    def CORS_ALLOW_HEADERS_LIST(self) -> list[str]:
-        return [h.strip() for h in self.CORS_ALLOW_HEADERS.split(",") if h.strip()]
+    @field_validator("CORS_ORIGINS", "CORS_ALLOW_METHODS", "CORS_ALLOW_HEADERS", mode="before")
+    @classmethod
+    def split_csv(cls, v: object) -> list[str]:
+        if isinstance(v, str):
+            return [item.strip() for item in v.split(",") if item.strip()]
+        return v  # type: ignore[return-value]
 
 
 CORSConfig = CORSConfig()
