@@ -6,14 +6,14 @@ const routes = [
         path: '/',
         name: 'Login',
         component: () => import('../views/Login.vue'),
-        meta: {title: '系统登录 - GAI科学素养平台', requiresAuth: false}
+        meta: {title: '系统登录', requiresAuth: false}
     },
     // 新增：管理员登录路由
     {
         path: '/admin/login',
         name: 'AdminLogin',
         component: () => import('../views/admin/AdminLogin.vue'),
-        meta: {title: '管理员登录 - GAI科学素养平台', requiresAuth: false}
+        meta: {title: '管理员登录', requiresAuth: false}
     },
 
     // ================= 学生端路由 =================
@@ -21,31 +21,31 @@ const routes = [
         path: '/index',
         name: 'StudentIndex',
         component: () => import('../views/student/Index.vue'),
-        meta: {title: '学生首页 - GAI科学素养平台', requiresAuth: true, role: 'student'}
+        meta: {title: '学生首页', requiresAuth: true, role: 'student'}
     },
     {
         path: '/resources',
         name: 'StudentResources',
         component: () => import('../views/student/Resources.vue'),
-        meta: {title: '课程中心 - GAI科学素养平台', requiresAuth: true, role: 'student'}
+        meta: {title: '课程中心', requiresAuth: true, role: 'student'}
     },
     {
         path: '/course/:courseId',
         name: 'CourseStu',
         component: () => import('../views/student/CourseStu.vue'),
-        meta: {title: '课程详情 - GAI科学素养平台', requiresAuth: true, role: 'student'}
+        meta: {title: '课程详情', requiresAuth: true, role: 'student'}
     },
     {
         path: '/course/study',
         name: 'StudentStudy',
         component: () => import('../views/student/StudentStudy.vue'),
-        meta: {title: '学生学习 - GAI科学素养平台', requiresAuth: true, role: 'student'}
+        meta: {title: '学生学习', requiresAuth: true, role: 'student'}
     },
     {
         path: '/course/task',
         name: 'TaskDetail',
         component: () => import('../views/student/TaskDetail.vue'),
-        meta: {title: '任务作答 - GAI科学素养平台', requiresAuth: true, role: 'student'}
+        meta: {title: '任务作答', requiresAuth: true, role: 'student'}
     },
 
     // ================= 教师端路由 =================
@@ -53,19 +53,19 @@ const routes = [
         path: '/teacher/index',
         name: 'TeacherIndex',
         component: () => import('../views/teacher/IndexTeacher.vue'),
-        meta: {title: '教师首页 - GAI科学素养平台', requiresAuth: true, role: 'teacher'}
+        meta: {title: '教师首页', requiresAuth: true, role: 'teacher'}
     },
     {
         path: '/teacher/resources',
         name: 'CourseManagement',
         component: () => import('../views/teacher/ResourceManage.vue'),
-        meta: {title: '课程中心 - GAI科学素养平台', requiresAuth: true, role: 'teacher'}
+        meta: {title: '课程中心', requiresAuth: true, role: 'teacher'}
     },
     {
         path: '/teacher/course/:course_id',
         name: 'CourseTeacher',
         component: () => import('../views/teacher/CourseTeacher.vue'),
-        meta: {title: '课程管理与编辑 - GAI科学素养平台', requiresAuth: true, role: 'teacher'}
+        meta: {title: '课程管理与编辑', requiresAuth: true, role: 'teacher'}
     },
 
     // ================= 管理员端路由 =================
@@ -73,7 +73,7 @@ const routes = [
         path: '/admin/manage',
         name: 'AdminManagement',
         component: () => import('../views/admin/AdminManagement.vue'),
-        meta: {title: '系统管理后台 - GAI科学素养平台', requiresAuth: true, role: 'admin'}
+        meta: {title: '系统管理后台', requiresAuth: true, role: 'admin'}
     },
 
     {
