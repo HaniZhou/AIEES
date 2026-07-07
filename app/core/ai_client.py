@@ -20,7 +20,7 @@ class LLMClient:
 
     async def generate_reply_stream(self, messages: list):
         """流式对话"""
-        completion = await self._client.chat.completions.create(
+        completion = await self._client.chat.completions.create( # 异步流式响应对象
             model=AIConfig.AI_MODEL_TEXT,
             messages=messages,
             temperature=0.8,

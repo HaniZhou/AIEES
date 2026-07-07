@@ -19,8 +19,9 @@ from app.service.course_service import CourseService
 from app.service.organization_service import OrganizationService
 from app.service.student_service import StudentService
 from app.service.task_service import TaskService
+from app.task.job.gai_analysis import process_gai_analysis_job
 from app.task.job.grading import process_task_grading_job
-from fastapi import APIRouter, BackgroundTasks, Depends, File, Form, HTTPException, Query, UploadFile, status
+from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, UploadFile, status
 
 router = APIRouter()
 
@@ -333,17 +334,20 @@ async def submit_gai_task(
     task_id: int,
     payload: GaiSubmitRequest,
     token_data: Annotated[TokenData, Depends(require_student)],
-    background_tasks: BackgroundTasks,
     task_svc: TaskService = Depends(TaskService),
     analysis_svc: AnalysisService = Depends(AnalysisService),
 ):
     completion_id = await task_svc.submit_gai_task(course_id, task_id, token_data.id, payload.messages)
-    background_tasks.add_task(
-        analysis_svc.execute_gai_analysis,
-        task_id=task_id,
-        completion_id=completion_id,
-        messages=payload.messages,
-    )
+    try:
+        await process_gai_analysis_job.kiq(
+            task_id=task_id,
+            completion_id=completion_id,
+            messages=payload.messages,
+        )
+    except Exception as exc:
+        await analysis_svc.update_gai_task_analysis_result(completion_id, f"分析队列异常: {str(exc)}")
+        raise HTTPException(status_code=502, detail="分析服务暂不可用，请稍后重试") from exc
+
     return response_success({})
 
 

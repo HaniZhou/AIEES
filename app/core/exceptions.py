@@ -34,7 +34,7 @@ class AppBusinessException(Exception):
     """
 
     def __init__(self, code: int, message: str, data: dict | None = None, log_module: str = "db"):
-        assert code in (400, 401, 403, 404, 409, 413, 429, 500, 502), f"业务异常 code 必须为 HTTP 状态码，收到: {code}"
+        assert code in (400, 401, 403, 404, 409, 413, 429, 500, 502), f"业务异常 code 必须为 HTTP 状态码，收到: {code}" # TODO：生产中不应该使用asset
         self.code = code
         self.message = message
         self.data = data if data is not None else {}

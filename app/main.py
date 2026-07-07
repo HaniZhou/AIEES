@@ -17,7 +17,6 @@ from app.core.config import CORSConfig, UrlConfig
 from app.core.database import db
 
 # 导入异常处理器
-# 导入业务异常类
 from app.core.exceptions import (
     AppBusinessException,
     app_business_exception_handler,
@@ -39,8 +38,8 @@ from fastapi import FastAPI, HTTPException
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # ==================== 启动阶段 ====================
-    # 日志配置必须在最前面
+    # --------------- 启动阶段 ---------------
+    # 日志配置
     configure_logging()
 
     try:
@@ -55,7 +54,7 @@ async def lifespan(app: FastAPI):
 
     yield
 
-    # ==================== 关闭阶段 ====================
+    # --------------- 关闭阶段 ---------------
     # 关闭数据库连接池
     await db.dispose()
     # 关闭 Redis 双池
@@ -67,7 +66,7 @@ app = FastAPI(lifespan=lifespan)
 # 关联 ID Middleware（必须放在最外层，在路由处理之前）
 app.add_middleware(RequestIDMiddleware)
 
-# ==================== 注入全局拦截器 ====================
+# --------------- 注入全局拦截器 ---------------
 # 1. 参数校验拦截器
 app.add_exception_handler(RequestValidationError, pydantic_validation_exception_handler)
 # 2. 业务异常拦截器
@@ -77,7 +76,7 @@ app.add_exception_handler(HTTPException, http_exception_handler)
 # 4. 兜底系统异常拦截器
 app.add_exception_handler(Exception, global_system_exception_handler)
 
-# ==================== 中间件与路由 ====================
+# --------------- 中间件与路由 ---------------
 app.add_middleware(
     CORSMiddleware,
     allow_origins=CORSConfig.CORS_ORIGINS,

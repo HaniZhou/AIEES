@@ -164,7 +164,7 @@ async def speech_to_text_stream(
     except Exception as e:
         # 拦截推流中途断开或其他未预料异常，转为 SSE error 事件
         asr.logger.error(f"Unexpected error during ASR streaming: {str(e)}")
-        yield ServerSentEvent(data={"error": "语音识别中断，请重试"}, event="error")
+        yield ServerSentEvent(data={"error": "语音识别中断，请重试"}, event="error") # TODO：统一API异常处理返回形式
 
     if not client_disconnected:
         yield ServerSentEvent(data="[DONE]", event="done")

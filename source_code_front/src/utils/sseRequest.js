@@ -8,29 +8,25 @@ import { showToast } from 'vant'
  * @param {RequestInit} options - 原生 fetch 配置项
  * @returns {Promise<Response>} 原生 fetch 响应对象
  */
-/**
- * 适用于 @microsoft/fetch-event-source 的自定义 fetch 封装
- * 目的：复用全局 Token 注入逻辑、基础路径与基础 HTTP 错误提示，对业务层屏蔽细节
- * @param {string} url - 请求地址（相对路径如 /xxx 或完整路径）
- * @param {RequestInit} options - 原生 fetch 配置项
- * @returns {Promise<Response>} 原生 fetch 响应对象
- */
 export const sseFetch = async (url, options) => {
   const baseURL = import.meta.env.VITE_API_BASE_URL || "/"
   const finalUrl = url.startsWith('http') ? url : `${baseURL}${url}`
   const token = localStorage.getItem('token')
 
+  // 获取原始 headers 并创建新的 headers 对象
   const originalHeaders = options.headers || {}
   const headers = {
     ...originalHeaders
   }
 
+  //根据情况在headers中设置Content-Type
   // 如果 body 不是 FormData，则默认设置 Content-Type 为 application/json
   // 如果是 FormData，则不设置 Content-Type，让浏览器自动处理 boundary
   if (!(options.body instanceof FormData)) {
     headers['Content-Type'] = originalHeaders['Content-Type'] || 'application/json'
   }
 
+  //携带 token
   if (token) {
     headers.Authorization = `Bearer ${token}`
   }

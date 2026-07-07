@@ -10,9 +10,9 @@ from contextvars import ContextVar
 from app.core.config import LogConfig
 
 # 日志级别（通过环境变量配置，默认 INFO）
-LOG_LEVEL = LogConfig.LOG_LEVEL
-SLOW_QUERY_MS = LogConfig.SLOW_QUERY_MS
-request_id_var: ContextVar[str] = ContextVar("request_id", default="-")
+LOG_LEVEL = LogConfig.LOG_LEVEL # 日志级别
+SLOW_QUERY_MS = LogConfig.SLOW_QUERY_MS # 慢查询阈值
+request_id_var: ContextVar[str] = ContextVar("request_id", default="-") #协程上下文局部变量 请求关联 ID（contextvars）
 
 _LOG_FORMAT = "%(asctime)s.%(msecs)03d [%(levelname)s] [%(name)s] [rid=%(request_id)s] %(message)s"
 _DATE_FORMAT = "%Y-%m-%d %H:%M:%S"
@@ -37,9 +37,8 @@ def configure_logging():
     root_logger = logging.getLogger()
     root_logger.setLevel(LOG_LEVEL)
 
-    # 清除已有 handlers（防止重复配置）
+    # 清除已有 handlers；uvicorn 会在启动时添加默认的 StreamHandler
     root_logger.handlers.clear()
-
     # 控制台 Handler（Docker 日志）
     console_handler = logging.StreamHandler(sys.stdout)
     console_handler.setLevel(LOG_LEVEL)

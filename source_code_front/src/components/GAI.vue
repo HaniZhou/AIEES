@@ -148,17 +148,17 @@ const props = defineProps({
 })
 const emit = defineEmits(['submit-task', 'overlay-click'])
 const {copy} = useClipboard()
-const isOpen = ref(false)
-const inputText = ref('')
-const bodyRef = ref(null)
-const allMessages = ref([])
-const displayCount = ref(10)
-const isLoadingMore = ref(false)
-const isProcessing = ref(false)
-const abortController = ref(null)
-const isInTaskMode = ref(false)
-const taskMessages = ref([])
-const systemPromptRef = ref('')
+const isOpen = ref(false) // 聊天面板是否展开
+const inputText = ref('') // 输入框文本内容
+const bodyRef = ref(null) // 聊天滚动区域DOM实例
+const allMessages = ref([]) // 普通模式全部聊天消息数组
+const displayCount = ref(10) // 消息分页单次展示条数
+const isLoadingMore = ref(false) // 是否正在加载更早历史消息
+const isProcessing = ref(false) // 是否正在请求AI流式回复
+const abortController = ref(null) // 中断AI请求控制器
+const isInTaskMode = ref(false) // 是否开启任务答题模式
+const taskMessages = ref([]) // 任务模式专属聊天消息数组
+const systemPromptRef = ref('') // 任务模式AI系统提示词
 const taskContext = reactive({
   courseName: '',
   taskTitle: '',
@@ -278,7 +278,7 @@ const loadHistory = () => {
 }
 const handleEnterKey = (e) => {
   if (e.shiftKey) return
-  e.preventDefault()
+  e.preventDefault() // 阻止浏览器默认换行行为
   sendMessage()
 }
 const handleStreamResponse = async (messagesPayload, userMsg, aiMsg, targetArray) => {

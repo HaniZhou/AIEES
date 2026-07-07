@@ -29,7 +29,7 @@ class RequestIDMiddleware(BaseHTTPMiddleware):
         start_time = time.time()
         try:
             response = await call_next(request)
-        except Exception:
+        except Exception: # TODO：错误日志未来在这里统一处理，避免重复记录；或者做拓展；考虑登陆信息需要记录吗？（我认为不用）；asr请求失败只需要记录完全失败
             logger.error(
                 "✗ %s %s (unhandled exception during request)",
                 request.method, request.url.path,
@@ -45,7 +45,7 @@ class RequestIDMiddleware(BaseHTTPMiddleware):
         # 4. 慢请求警告（超过 2 秒）
         if duration_ms > 2000:
             logger.warning(
-                "🐢 %s %s %d %dms",
+                "%s %s %d %dms",
                 request.method, request.url.path,
                 response.status_code, duration_ms,
                 extra={"request_id": request_id, "slow": True}
