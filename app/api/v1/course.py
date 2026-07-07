@@ -19,7 +19,6 @@ from app.service.course_service import CourseService
 from app.service.organization_service import OrganizationService
 from app.service.student_service import StudentService
 from app.service.task_service import TaskService
-from app.task.job.gai_analysis import process_gai_analysis_job
 from app.task.job.grading import process_task_grading_job
 from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, UploadFile, status
 
@@ -337,6 +336,8 @@ async def submit_gai_task(
     task_svc: TaskService = Depends(TaskService),
     analysis_svc: AnalysisService = Depends(AnalysisService),
 ):
+    from app.task.job.gai_analysis import process_gai_analysis_job
+
     completion_id = await task_svc.submit_gai_task(course_id, task_id, token_data.id, payload.messages)
     try:
         await process_gai_analysis_job.kiq(
