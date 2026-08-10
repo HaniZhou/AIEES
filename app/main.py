@@ -99,14 +99,14 @@ app.include_router(admin_router, prefix="/api/admin", tags=["admin"])
 @app.get("/health")
 async def health():
     """健康检查端点（用于 Docker Compose healthcheck / K8s liveness probe）。"""
-    from sqlmodel import select
+    from sqlalchemy import text
 
     checks = {"status": "healthy", "db": False, "redis": False}
 
     # 检查 PostgreSQL
     try:
         async with db.async_session_factory() as session:
-            await session.exec(select(1))
+            await session.exec(text("SELECT 1"))
         checks["db"] = True
     except Exception:
         checks["status"] = "degraded"

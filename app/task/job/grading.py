@@ -6,9 +6,7 @@ import re
 from app.core.ai_client import llm
 from app.core.database import db
 from app.core.logging import get_logger
-from app.core.prompts import Prompt
 from app.service.analysis_service import AnalysisService
-from app.service.student_service import StudentService
 from app.service.task_service import TaskService
 from app.task.broker import broker
 
@@ -18,25 +16,12 @@ job_logger = get_logger(__name__)
 async def _trigger_course_analysis(course_id: str, student_id: str, current_task_id: int, current_task_results: list):
     try:
         async with db.async_session_factory() as session:
-            student_svc = StudentService(session=session)
-            context_data = await student_svc.get_student_course_context(
-                course_id,
-                student_id,
-                current_task_id,
-                current_task_results,
-            )
-        if not context_data:
-            llm.logger.warning(f"Analysis context empty for student {student_id} in course {course_id}")
-            return
-        json_str = json.dumps(context_data, ensure_ascii=False, indent=2)
-        sys_prompt = Prompt.STUDENT_LEARNING_ANALYSIS_SYSTEM_PROMPT.format(json_data=json_str)
-        analysis_text = await llm.generate_analysis_text(sys_prompt, "请开始分析。")
-        async with db.async_session_factory() as session:
             analysis_svc = AnalysisService(session=session)
-            await analysis_svc.upsert_student_analysis_description(
+            await analysis_svc.generate_student_course_analysis(
                 course_id=course_id,
                 student_id=student_id,
-                analysis_content=analysis_text,
+                current_task_id=current_task_id,
+                current_task_results=current_task_results,
             )
             await session.commit()
     except Exception as e:
@@ -45,22 +30,12 @@ async def _trigger_course_analysis(course_id: str, student_id: str, current_task
         )
 
 
-def _replace_id_with_content(answer, options_map: dict) -> str | list[str] | None:
-    if not answer:
-        return answer
-    if isinstance(answer, list):
-        return [options_map.get(item, item) for item in answer]
-    if isinstance(answer, str):
-        return options_map.get(answer, answer)
-    return answer
-
-
 @broker.task()
 async def process_task_grading_job(task_completion_id: int, course_id: str, student_id: str, task_id: int):
     try:
         async with db.async_session_factory() as session:
-            task_svc = TaskService(session=session)
-            task_data = await task_svc.get_grading_data(task_completion_id)
+            read_svc = TaskService(session=session)
+            task_data = await read_svc.get_grading_data(task_completion_id)
         if not task_data:
             llm.logger.error(f"Grading failed: Completion record {task_completion_id} not found.")
             return
@@ -70,8 +45,9 @@ async def process_task_grading_job(task_completion_id: int, course_id: str, stud
         total_questions = len(quiz)
         if total_questions == 0:
             async with db.async_session_factory() as session:
-                task_svc2 = TaskService(session=session)
-                await task_svc2.save_grading_result(task_completion_id, 0, "任务没有题目，无法评分")
+                grading_svc = TaskService(session=session)
+                await grading_svc.save_grading_result(task_completion_id, 0, "任务没有题目，无法评分")
+                await session.commit()
             return
         std_answer_map = {
             item.get("question_id"): item.get("correct_answer")
@@ -160,14 +136,16 @@ async def process_task_grading_job(task_completion_id: int, course_id: str, stud
             )
             ai_analysis_response = "评分完成，但AI学情分析生成异常"
         async with db.async_session_factory() as session:
-            task_svc3 = TaskService(session=session)
-            await task_svc3.save_grading_result(task_completion_id, final_score, ai_analysis_response)
+            save_svc = TaskService(session=session)
+            await save_svc.save_grading_result(task_completion_id, final_score, ai_analysis_response)
+            await session.commit()
         await _trigger_course_analysis(course_id, student_id, task_id, question_results)
     except Exception as e:
         llm.logger.error(f"Unexpected error in grading job for completion {task_completion_id}: {str(e)}")
         try:
             async with db.async_session_factory() as session:
-                task_svc4 = TaskService(session=session)
-                await task_svc4.save_grading_result(task_completion_id, 0, f"评分过程发生系统异常: {str(e)}")
+                error_svc = TaskService(session=session)
+                await error_svc.save_grading_result(task_completion_id, 0, f"评分过程发生系统异常: {str(e)}")
+                await session.commit()
         except BaseException:
             pass

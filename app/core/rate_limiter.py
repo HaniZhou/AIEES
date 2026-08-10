@@ -43,7 +43,6 @@ class RateLimiter:
         lk = self._lock_key(user_id)
         ttl = await self._cli.ttl(lk)
         if ttl > 0:
-            logger.warning(f"User [{user_id}] login attempt rejected: account LOCKED, remaining {ttl}s")
             return {
                 "status": "locked",
                 "fail_count": AuthSecurityConfig.FAIL_THRESHOLD_LOCK,
@@ -78,13 +77,7 @@ class RateLimiter:
         if fail_count >= AuthSecurityConfig.FAIL_THRESHOLD_LOCK:
             lk = self._lock_key(user_id)
             await self._cli.set(lk, "1", ex=AuthSecurityConfig.LOGIN_LOCK_TTL)
-            logger.error(
-                f"User [{user_id}] account LOCKED due to "
-                f"{fail_count} consecutive login failures within {AuthSecurityConfig.LOGIN_FAIL_COUNT_TTL}s"
-            )
             return {"status": "locked", "fail_count": fail_count}
-
-        logger.warning(f"User [{user_id}] login failed (count: {fail_count}/{AuthSecurityConfig.FAIL_THRESHOLD_LOCK})")
 
         return {
             "status": "need_captcha" if fail_count >= AuthSecurityConfig.FAIL_THRESHOLD_CAPTCHA else "normal",
@@ -95,7 +88,6 @@ class RateLimiter:
         """登录成功后清除该用户的失败计数记录"""
         fk = self._fail_count_key(user_id)
         await self._cli.delete(fk)
-        logger.info(f"User [{user_id}] login succeeded, failure count cleared")
 
     async def store_captcha(self, captcha_key: str, answer: int) -> None:
         """将验证码正确答案存入 Redis，设置过期时间"""
@@ -110,14 +102,9 @@ class RateLimiter:
         await self._cli.delete(key)
 
         if not stored_answer:
-            logger.warning(f"Captcha verification failed: key [{captcha_key}] not found or expired")
             return False
 
         is_correct = stored_answer.strip().lower() == user_answer.strip().lower()
-        if not is_correct:
-            logger.warning(
-                f"Captcha verification failed for key [{captcha_key}]: expected={stored_answer}, got={user_answer}"
-            )
         return is_correct
 
     async def asr_rate_limit(
@@ -125,7 +112,7 @@ class RateLimiter:
     ) -> TokenData:
         """限制用户每分钟调用 ASR 接口次数（默认 20 次）"""
         key = self._asr_limit_key(token_data.id)
-        count = await self._cli.incr(key)
+        count: int = await self._cli.incr(key)
 
         if count == 1:
             await self._cli.expire(key, 60)

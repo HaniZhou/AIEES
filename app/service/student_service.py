@@ -1,9 +1,10 @@
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 
 from sqlalchemy.orm.attributes import flag_modified
 from sqlmodel import select
 from sqlmodel.ext.asyncio.session import AsyncSession
 
+from app.common.formatters import replace_id_with_content
 from app.core.database import db
 from app.core.exceptions import AppBusinessException
 from app.model.models import (
@@ -25,6 +26,11 @@ from app.util.time_util import format_utc_time
 from fastapi import Depends
 
 
+def _current_week_start() -> str:
+    now = datetime.now(UTC)
+    return (now.date() - timedelta(days=now.weekday())).isoformat()
+
+
 class StudentService:
     """学生端: 学习进度、统计"""
 
@@ -32,7 +38,10 @@ class StudentService:
         self.session = session
 
     async def get_weekly_study(self, student_id: str) -> list[int]:
-        stmt = select(StudentDailyStudyTimeInCourse).where(StudentDailyStudyTimeInCourse.student_id == student_id)
+        stmt = select(StudentDailyStudyTimeInCourse).where(
+            StudentDailyStudyTimeInCourse.student_id == student_id,
+            StudentDailyStudyTimeInCourse.week_start == _current_week_start(),
+        )
         records = (await self.session.exec(stmt)).all()
         totals = [0] * 7
         for record in records:
@@ -44,7 +53,7 @@ class StudentService:
                 totals[idx] += int(value) if value else 0
         return totals
 
-    async def get_weekly_study_in_course(self, student_id: str, course_id, teacher_id: str) -> list[float]:
+    async def get_weekly_study_in_course(self, student_id: str, course_id, teacher_id: str) -> list[int]:
         stmt = select(Course).where(Course.course_id == course_id)
         course = (await self.session.exec(stmt)).one_or_none()
         if not course:
@@ -54,9 +63,10 @@ class StudentService:
         stmt = select(StudentDailyStudyTimeInCourse).where(
             StudentDailyStudyTimeInCourse.student_id == student_id,
             StudentDailyStudyTimeInCourse.course_id == course_id,
+            StudentDailyStudyTimeInCourse.week_start == _current_week_start(),
         )
         records = (await self.session.exec(stmt)).all()
-        totals = [0.0] * 7
+        totals = [0] * 7
         for record in records:
             data = record.study_data
             if not data:
@@ -139,11 +149,13 @@ class StudentService:
             raise AppBusinessException(403, "无权访问此课程")
 
         weekday_idx = datetime.now(UTC).weekday()
+        week_start = _current_week_start()
         stmt = (
             select(StudentDailyStudyTimeInCourse)
             .where(
                 StudentDailyStudyTimeInCourse.student_id == student_id,
                 StudentDailyStudyTimeInCourse.course_id == course_id,
+                StudentDailyStudyTimeInCourse.week_start == week_start,
             )
             .with_for_update()
         )
@@ -152,14 +164,13 @@ class StudentService:
             study_data = [0] * 7
             study_data[weekday_idx] = int(duration)
             self.session.add(
-                StudentDailyStudyTimeInCourse(student_id=student_id, course_id=course_id, study_data=study_data)
+                StudentDailyStudyTimeInCourse(
+                    student_id=student_id, course_id=course_id, week_start=week_start, study_data=study_data
+                )
             )
         else:
-            current_data = record.study_data
-            if not isinstance(current_data, list) or len(current_data) != 7:
-                current_data = [0] * 7
-            original_val = current_data[weekday_idx]
-            current_data[weekday_idx] = (int(original_val) if original_val else 0) + int(duration)
+            current_data = [int(v) if v else 0 for v in record.study_data]
+            current_data[weekday_idx] += int(duration)
             record.study_data = current_data
             flag_modified(record, "study_data")
             self.session.add(record)
@@ -400,17 +411,8 @@ class StudentService:
                 std_ans_text = std_answer_map.get(q_id)
                 stu_ans_text = student_answer_map.get(q_id)
 
-                def _replace_id_with_content(answer, opts_map):
-                    if not answer:
-                        return answer
-                    if isinstance(answer, list):
-                        return [opts_map.get(item, item) for item in answer]
-                    if isinstance(answer, str):
-                        return opts_map.get(answer, answer)
-                    return answer
-
-                readable_std_ans = _replace_id_with_content(std_ans_text, options_map) if std_ans_text else None
-                readable_stu_ans = _replace_id_with_content(stu_ans_text, options_map) if stu_ans_text else None
+                readable_std_ans = replace_id_with_content(std_ans_text, options_map) if std_ans_text else None
+                readable_stu_ans = replace_id_with_content(stu_ans_text, options_map) if stu_ans_text else None
 
                 q_detail = {
                     "type": q.get("type"),

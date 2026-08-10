@@ -9,8 +9,9 @@ from fastapi.sse import EventSourceResponse, ServerSentEvent
 from app.api.dependencies import require_student, require_teacher, validate_asr_file
 from app.common.response import response_success
 from app.common.tools import write_resource
-from app.core.ai_client import llm, asr
+from app.core.ai_client import asr, llm
 from app.core.config import Limit
+from app.core.exceptions import ASRServiceError, sse_error_response
 from app.core.prompts import Prompt
 from app.core.rate_limiter import rate_limiter
 from app.core.security import verify_token_return_payload
@@ -54,7 +55,8 @@ async def chat_stream_student(
                 client_disconnected = True
                 break
     except Exception as e:
-        yield ServerSentEvent(data={"error": str(e)}, event="error")
+        llm.logger.error("chat stream error on %s: %s", request.url.path, e, exc_info=True)
+        yield ServerSentEvent(data=sse_error_response(502, "AI 服务暂时不可用，请稍后重试"), event="error")
 
     if not client_disconnected:
         yield ServerSentEvent(data="[DONE]", event="done")
@@ -82,7 +84,8 @@ async def chat_stream_teacher(
                 client_disconnected = True
                 break
     except Exception as e:
-        yield ServerSentEvent(data={"error": str(e)}, event="error")
+        llm.logger.error("chat stream error on %s: %s", request.url.path, e, exc_info=True)
+        yield ServerSentEvent(data=sse_error_response(502, "AI 服务暂时不可用，请稍后重试"), event="error")
 
     if not client_disconnected:
         yield ServerSentEvent(data="[DONE]", event="done")
@@ -111,7 +114,8 @@ async def chat_stream_gai(
                 client_disconnected = True
                 break
     except Exception as e:
-        yield ServerSentEvent(data={"error": str(e)}, event="error")
+        llm.logger.error("chat stream error on %s: %s", request.url.path, e, exc_info=True)
+        yield ServerSentEvent(data=sse_error_response(502, "AI 服务暂时不可用，请稍后重试"), event="error")
 
     if not client_disconnected:
         yield ServerSentEvent(data="[DONE]", event="done")
@@ -121,9 +125,8 @@ async def chat_stream_gai(
 @router.post("/asr", response_class=EventSourceResponse)
 async def speech_to_text_stream(
         request: Request,
-        # 关键修复：将文件校验作为依赖注入，确保在流式响应建立前拦截 400 错误
-        asr_file_data: dict = Depends(validate_asr_file),
-        token_data: TokenData = Depends(rate_limiter.asr_rate_limit)
+        token_data: TokenData = Depends(rate_limiter.asr_rate_limit),  # 先验证 token
+        asr_file_data: dict = Depends(validate_asr_file),               # 再读取文件
 ) -> AsyncIterable[ServerSentEvent]:
     """流式音频文件上传识别接口"""
 
@@ -160,11 +163,15 @@ async def speech_to_text_stream(
                 break
     except HTTPException:
         # 拦截连接阶段重试耗尽抛出的 502 异常，转为 SSE error 事件
-        yield ServerSentEvent(data={"error": "语音识别服务暂时不可用"}, event="error")
+        yield ServerSentEvent(data=sse_error_response(502, "语音识别服务暂时不可用"), event="error")
+    except ASRServiceError:
+        # ASR 上游连接异常（重试耗尽），转为 SSE error 事件
+        asr.logger.warning("ASR upstream unavailable on %s", request.url.path)
+        yield ServerSentEvent(data=sse_error_response(502, "语音识别服务暂时不可用"), event="error")
     except Exception as e:
         # 拦截推流中途断开或其他未预料异常，转为 SSE error 事件
-        asr.logger.error(f"Unexpected error during ASR streaming: {str(e)}")
-        yield ServerSentEvent(data={"error": "语音识别中断，请重试"}, event="error") # TODO：统一API异常处理返回形式
+        asr.logger.error("Unexpected error during ASR streaming: %s", e, exc_info=True)
+        yield ServerSentEvent(data=sse_error_response(502, "语音识别中断，请重试"), event="error")
 
     if not client_disconnected:
         yield ServerSentEvent(data="[DONE]", event="done")

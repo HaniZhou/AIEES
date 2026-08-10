@@ -7,7 +7,7 @@ class OrganizationCreate(BaseModel):
     """创建组织请求体"""
     organization_name: str = Field(max_length=255, description="组织名称")
     phase: PhaseType = Field(description="适用学段（必选）")
-    prefix: str = Field(default="", max_length=50, description="登录前缀")
+    prefix: str = Field(max_length=50, min_length=1, description="识别编码（必填）")
 
 
 class OrganizationUpdate(BaseModel):

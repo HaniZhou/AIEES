@@ -11,6 +11,16 @@ export default defineConfig({
         outDir: "../frontend/dist",     // 直接输出到 Nginx 挂载的路径
         emptyOutDir: true,
     },
+    server: {
+        host: '0.0.0.0',          // 允许局域网设备（平板）访问
+        port: 5173,
+        proxy: {
+            '/api': {
+                target: 'http://localhost',   // 仅 npm run dev 时生效：转发到 nginx-dev(:80) 再代理到 api-dev
+                changeOrigin: true,
+            },
+        },
+    },
     plugins: [
         vue(),
         vueDevTools(),

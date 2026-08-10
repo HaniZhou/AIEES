@@ -12,8 +12,8 @@ import request from "../utils/request";
  * @response { code: number, data: { access_token: string, role: string, username: string, id: string, user_class: string } | { need_captcha: boolean, locked: boolean, lock_ttl: number } }
  * @interactionNotes 登录成功前端需将 data 下的字段存入 localStorage。业务错误（HTTP 200）由调用方解析 res. Data 指令处理 UI。
  */
-export function auth(payload) {
-  return request.post("auth/token", payload);
+export function auth(payload, config) {
+  return request.post("auth/token", payload, config);
 }
 
 /**

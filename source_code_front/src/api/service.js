@@ -26,7 +26,7 @@ export const chatStream = async ({url, messages, signal }, { onToken, onDone, on
         } else if (ev.event === 'error') {
           isStreamFinished = true
           const errData = JSON.parse(ev.data)
-          onError?.(errData.error || 'AI 服务出现异常', 'BUSINESS')
+          onError?.(errData.message || 'AI 服务出现异常', 'BUSINESS')
           throw new Error('BACKEND_BUSINESS_ERROR') // 抛出特定错误中断 fetchEventSource
         }
       },
@@ -80,7 +80,7 @@ export const asrStream = async ({ formData, signal }, { onToken, onDone, onError
         } else if (ev.event === 'error') {
           isStreamFinished = true
           const errData = JSON.parse(ev.data)
-          onError?.(errData.error || '语音识别服务异常', 'BUSINESS')
+          onError?.(errData.message || '语音识别服务异常', 'BUSINESS')
           throw new Error('BACKEND_BUSINESS_ERROR')
         }
       },

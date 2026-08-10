@@ -20,7 +20,8 @@ class Organization(SQLModel, table=True):
 
     classes: list[StudentClass] = Relationship(back_populates="organization", passive_deletes="all",
                                                  sa_relationship_kwargs={"lazy": "raise"})
-    teachers: list[Teacher] = Relationship(back_populates="organization", sa_relationship_kwargs={"lazy": "raise"})
+    teachers: list[Teacher] = Relationship(back_populates="organization", passive_deletes="all",
+                                             sa_relationship_kwargs={"lazy": "raise"})
     students: list[Student] = Relationship(back_populates="organization", passive_deletes="all",
                                              sa_relationship_kwargs={"lazy": "raise"})
 
@@ -138,7 +139,7 @@ class Chapter(SQLModel, table=True):
     chapter_id: int | None = Field(primary_key=True, default=None)
     course_id: uuid.UUID = Field(index=True, foreign_key="course.course_id", ondelete="CASCADE")
     chapter_title: str = Field(max_length=255)
-    chapter_order: int = Field()
+    chapter_order: int | None = Field(default=None)
 
     course: Course = Relationship(back_populates="chapters", passive_deletes="all",
                                   sa_relationship_kwargs={"lazy": "raise"})
@@ -158,7 +159,7 @@ class Section(SQLModel, table=True):
     section_type: ResourceType = Field(sa_column=Column(SAEnum(ResourceType)))
     resource_path: str = Field()
     description: str = Field(default="", sa_column=Column(TEXT))
-    section_order: int = Field()
+    section_order: int | None = Field(default=None)
 
     chapter: Chapter = Relationship(back_populates="sections", sa_relationship_kwargs={"lazy": "raise"})
     section_completions: list[SectionCompletionRecord] = Relationship(back_populates="section", passive_deletes="all",
@@ -192,12 +193,15 @@ class Task(SQLModel, table=True):
 class TaskCompletion(SQLModel, table=True):
     """ 任务完成记录 """
     __tablename__ = "task_completion"
+    __table_args__ = (
+        UniqueConstraint("task_id", "student_id", name="uq_task_student"),
+    )
     completion_id: int | None = Field(primary_key=True, default=None)
     task_id: int = Field(foreign_key="task.task_id", ondelete="CASCADE")
     student_id: str = Field(foreign_key="student.id", ondelete="CASCADE")
     answer: list[dict[str, Any]] | None = Field(default=None, sa_column=Column(JSON))
     task_scores: int = Field(description="任务得分")
-    task_analysis: str | None = Field(default="AI正在分析中", sa_column=Column(TEXT),
+    task_analysis: str | None = Field(default=None, sa_column=Column(TEXT),
                                          description="AI对学生作答的分析")
 
     task: Task = Relationship(back_populates="task_completions", sa_relationship_kwargs={"lazy": "raise"})
@@ -222,10 +226,17 @@ class AnalysisTask(SQLModel, table=True):
 class AnalysisTaskCompletion(SQLModel, table=True):
     """ GAI对话分析任务提交 """
     __tablename__ = "analysis_task_completion_record"
+    __table_args__ = (
+        UniqueConstraint("analysis_task_id", "student_id", name="uq_gai_task_student"),
+    )
     completion_id: int | None = Field(primary_key=True, default=None)
     analysis_task_id: int = Field(foreign_key="analysis_task.analysis_task_id", ondelete="CASCADE")
     student_id: str = Field(foreign_key="student.id", ondelete="CASCADE")
-    messages: dict[str, Any] | None = Field(default=None, sa_column=Column(JSON), description="存储对话massages")
+    messages: dict[str, Any] | None = Field(
+        default=None,
+        sa_column=Column(JSON),
+        description="存储对话massages，结构: {\"messages\": [{\"role\": \"...\", \"content\": \"...\"}]}",
+    )
     analysis_result: str = Field(sa_column=Column(TEXT), description="massages分析的结果")
     course_id: uuid.UUID = Field(index=True, foreign_key="course.course_id", ondelete="CASCADE")
 
@@ -253,6 +264,7 @@ class StudentDailyStudyTimeInCourse(SQLModel, table=True):
     record_id: int | None = Field(primary_key=True, default=None)
     student_id: str = Field(index=True, foreign_key="student.id", ondelete="CASCADE")
     course_id: uuid.UUID = Field(index=True, foreign_key="course.course_id", ondelete="CASCADE")
+    week_start: str = Field(index=True, max_length=10, description="本周周一日期 yyyy-mm-dd")
     study_data: list[int | None] | None = Field(default=None, sa_column=Column(JSON),
                                                    description="周一到周日的学习时间(秒)")
     student: Student = Relationship(back_populates="daily_study", passive_deletes="all",

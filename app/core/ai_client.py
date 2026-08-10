@@ -6,6 +6,7 @@ import httpx
 from openai import AsyncOpenAI
 
 from app.core.config import AIConfig
+from app.core.exceptions import ASRServiceError
 from app.core.logging import get_logger
 
 
@@ -112,7 +113,7 @@ class ASRClient:
             except Exception as conn_err:
                 if attempt == max_retries:
                     self.logger.error(f"ASR connection failed after {max_retries} retries: {str(conn_err)}")
-                    raise httpx.HTTPStatusError("语音识别服务连接失败", request=None, response=None) from conn_err
+                    raise ASRServiceError("语音识别服务连接失败", original_error=conn_err) from conn_err
                 self.logger.warning(f"ASR connection failed, retrying ({attempt}/{max_retries}), error: {str(conn_err)}")
                 await asyncio.sleep(1 * attempt)
 

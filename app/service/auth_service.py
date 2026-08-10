@@ -2,14 +2,11 @@ from sqlmodel import select
 from sqlmodel.ext.asyncio.session import AsyncSession
 
 from app.core.database import db
-from app.core.logging import get_logger
 from app.core.security import verify_password
 from app.model.models import Admin, Organization, Student, StudentClass, Teacher
 from app.schema.enums import RoleType
 from app.schema.user import UserPublish
 from fastapi import Depends
-
-auth_logger = get_logger(__name__)
 
 
 class AuthService:
@@ -87,10 +84,8 @@ class AuthService:
         user_dict = await self.get_user_info(id, role)
         if not user_dict:
             verify_password(password, DUMMY_HASH)
-            auth_logger.warning(f"Login failed: user [{id}] (role={role.value}) not found in DB")
             return None
         if not verify_password(password, user_dict.get("hashed_password")):
-            auth_logger.warning(f"Login failed: user [{id}] (role={role.value}) wrong password")
             return None
         user_dict.pop("hashed_password", None)
         user_dict.pop("class_id", None)

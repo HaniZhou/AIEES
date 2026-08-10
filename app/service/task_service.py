@@ -1,6 +1,7 @@
 import uuid
 from datetime import UTC, datetime
 
+from sqlalchemy.exc import IntegrityError
 from sqlmodel import select
 from sqlmodel.ext.asyncio.session import AsyncSession
 
@@ -38,12 +39,6 @@ class TaskService:
         )
         if not (await self.session.exec(stmt)).first():
             raise AppBusinessException(403, "无权访问此课程")
-        stmt = select(TaskCompletion).where(
-            TaskCompletion.task_id == task_id,
-            TaskCompletion.student_id == student_id,
-        )
-        if (await self.session.exec(stmt)).first():
-            raise AppBusinessException(400, "已提交过答案")
         if task.deadline and datetime.now(UTC) > task.deadline:
             raise AppBusinessException(400, "任务已过截止时间，无法提交")
 
@@ -52,10 +47,14 @@ class TaskService:
             student_id=student_id,
             answer=answers,
             task_scores=0,
-            task_analysis="grading",
+            task_analysis="grading",  # 哨兵，见 B18 说明
         )
         self.session.add(completion_record)
-        await self.session.flush()
+        try:
+            await self.session.flush()
+        except IntegrityError:
+            await self.session.rollback()
+            raise AppBusinessException(400, "已提交过答案") from None
         await self.session.refresh(completion_record)
         if completion_record.completion_id is None:
             raise AppBusinessException(500, "系统异常：提交记录主键生成失败")
@@ -72,12 +71,6 @@ class TaskService:
         )
         if not (await self.session.exec(stmt)).first():
             raise AppBusinessException(403, "无权访问此课程")
-        stmt = select(AnalysisTaskCompletion).where(
-            AnalysisTaskCompletion.analysis_task_id == task_id,
-            AnalysisTaskCompletion.student_id == student_id,
-        )
-        if (await self.session.exec(stmt)).first():
-            raise AppBusinessException(400, "已提交过任务")
         if task.deadline and datetime.now(UTC) > task.deadline:
             raise AppBusinessException(400, "任务已过截止时间，无法提交")
 
@@ -89,7 +82,11 @@ class TaskService:
             course_id=course_id,
         )
         self.session.add(completion_record)
-        await self.session.commit()
+        try:
+            await self.session.flush()
+        except IntegrityError:
+            await self.session.rollback()
+            raise AppBusinessException(400, "已提交过任务") from None
         await self.session.refresh(completion_record)
         return completion_record.completion_id
 
@@ -351,4 +348,4 @@ class TaskService:
             record.task_scores = final_score
             record.task_analysis = analysis_text
             self.session.add(record)
-            await self.session.commit()
+            await self.session.flush()

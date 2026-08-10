@@ -28,6 +28,11 @@ request.interceptors.response.use(
             return Promise.reject(error);
         }
 
+        // 调用方通过 skipToast 配置跳过全局提示（由页面自行处理错误展示，如登录页行内错误）
+        if (error.config?.skipToast) {
+            return Promise.reject(error);
+        }
+
         // 服务器有响应
         if (error.response) {
             const {status} = error.response;

@@ -1,7 +1,7 @@
 import uuid
 
 from sqlalchemy.orm import selectinload
-from sqlmodel import func, select
+from sqlmodel import select
 from sqlmodel.ext.asyncio.session import AsyncSession
 
 from app.common.formatters import _validate_task_payload_consistency
@@ -49,8 +49,19 @@ class CourseService:
         await self.session.refresh(course)
 
         if class_names:
-            stmt = select(StudentClass).where(StudentClass.class_name.in_(class_names))
+            stmt = select(Teacher.organization_id).where(Teacher.id == course_info.teacher_id)
+            org_id = (await self.session.exec(stmt)).first()
+            if not org_id:
+                raise AppBusinessException(400, "教师信息异常")
+            stmt = select(StudentClass).where(
+                StudentClass.class_name.in_(class_names),
+                StudentClass.organization_id == org_id,
+            )
             classes = (await self.session.exec(stmt)).all()
+            matched_names = {c.class_name for c in classes}
+            unmatched = sorted(set(class_names) - matched_names)
+            if unmatched:
+                raise AppBusinessException(400, f"班级不存在或不属于本校: {', '.join(unmatched)}")
             if classes:
                 class_ids = [c.class_id for c in classes]
                 stmt = select(Student.id).where(Student.class_id.in_(class_ids))
@@ -168,9 +179,9 @@ class CourseService:
             stmt = select(Chapter).where(Chapter.course_id == course_id).order_by(Chapter.chapter_order)
             remaining = (await self.session.exec(stmt)).all()
             temp_order = -1
+            # NULL 不参与唯一约束，避免负值占位混淆；最终正序由下方 idx 段统一赋值
             for ch in remaining:
-                ch.chapter_order = temp_order
-                temp_order -= 1
+                ch.chapter_order = None
                 self.session.add(ch)
             await self.session.flush()
 
@@ -202,7 +213,7 @@ class CourseService:
                 del_sec_ids = [s.section_id for s in db_secs if s.section_id not in req_sec_ids]
 
                 if del_sec_ids:
-                    stmt = select(Section.resource_path).where(Section.chapter_id.in_(del_sec_ids))
+                    stmt = select(Section.resource_path).where(Section.section_id.in_(del_sec_ids))
                     removed_paths = list((await self.session.exec(stmt)).all())
                     removed_resource_paths.update({p for p in removed_paths if p})
                     from sqlmodel import delete as _sql_delete
@@ -212,9 +223,9 @@ class CourseService:
                 stmt = select(Section).where(Section.chapter_id == current_real_ch_id).order_by(Section.section_order)
                 remaining_secs = (await self.session.exec(stmt)).all()
                 temp_sec_order = -1
+                # NULL 不参与唯一约束，避免负值占位混淆；最终正序由下方 idx 段统一赋值
                 for sec in remaining_secs:
-                    sec.section_order = temp_sec_order
-                    temp_sec_order -= 1
+                    sec.section_order = None
                     self.session.add(sec)
                 await self.session.flush()
 
@@ -269,7 +280,8 @@ class CourseService:
                     stmt = select(Chapter).where(Chapter.chapter_id == target_id)
                     db_ch = (await self.session.exec(stmt)).one_or_none()
                     if db_ch:
-                        db_ch.chapter_order = ch_data.chapter_order if ch_data.chapter_order is not None else idx + 1
+                        raw_order = ch_data.chapter_order
+                        db_ch.chapter_order = raw_order if (raw_order is not None and raw_order >= 0) else idx + 1
                         self.session.add(db_ch)
             await self.session.flush()
 
@@ -444,13 +456,23 @@ class CourseService:
         await self.session.delete(task)
         await self.session.flush()
 
-    async def get_teacher_courses_page(self, teacher_id: str, page: int, size: int = 16) -> list[dict]:
+    async def get_teacher_courses_page(self, teacher_id: str, page: int, size: int = 16) -> dict:
         offset = (page - 1) * size
         stmt = (
-            select(Course).where(Course.teacher_id == teacher_id).order_by(Course.course_id).offset(offset).limit(size)
+            select(Course)
+            .where(Course.teacher_id == teacher_id)
+            .order_by(Course.course_id)
+            .offset(offset)
+            .limit(size + 1)
         )
         courses = (await self.session.exec(stmt)).all()
-        return [CourseRead.model_validate(c).model_dump(mode="json") for c in courses]
+        has_more = len(courses) > size
+        if has_more:
+            courses = courses[:size]
+        return {
+            "courses": [CourseRead.model_validate(c).model_dump(mode="json") for c in courses],
+            "has_more": has_more,
+        }
 
     async def get_course_detail(self, course_id: uuid.UUID, teacher_id: str) -> dict:
         stmt = select(Course).where(Course.course_id == course_id)
@@ -460,30 +482,6 @@ class CourseService:
         if course.teacher_id != teacher_id:
             raise AppBusinessException(403, "无权查看此课程")
         return CourseDetailRead.model_validate(course).model_dump(mode="json")
-
-    async def get_course_detail_for_student(self, course_id: uuid.UUID, student_id: str) -> dict:
-        stmt = select(Course).where(Course.course_id == course_id)
-        course = (await self.session.exec(stmt)).one_or_none()
-        if not course:
-            raise AppBusinessException(404, "课程不存在")
-        stmt = select(CourseRegistrationRecord).where(
-            CourseRegistrationRecord.student_id == student_id,
-            CourseRegistrationRecord.course_id == course_id,
-        )
-        if not (await self.session.exec(stmt)).first():
-            raise AppBusinessException(403, "无权访问此课程")
-        stmt = select(Course.teacher_id).where(Course.course_id == course_id)
-        teacher_id = (await self.session.exec(stmt)).first()
-        teacher_name = ""
-        if teacher_id:
-            stmt = select(Teacher.username).where(Teacher.id == teacher_id)
-            teacher_name = (await self.session.exec(stmt)).first() or ""
-        return {
-            "course_id": str(course.course_id),
-            "course_name": course.course_name,
-            "course_cover": course.course_cover,
-            "teacher_name": teacher_name or "",
-        }
 
     async def get_chapters_with_sections(
         self,
@@ -556,12 +554,6 @@ class CourseService:
 
     async def get_student_courses_page(self, student_id: str, page: int) -> dict:
         size = 16
-        count_stmt = (
-            select(func.count())
-            .select_from(CourseRegistrationRecord)
-            .where(CourseRegistrationRecord.student_id == student_id)
-        )
-        total = (await self.session.exec(count_stmt)).one()
         offset = (page - 1) * size
         stmt = (
             select(CourseRegistrationRecord.course_id)
@@ -574,14 +566,18 @@ class CourseService:
         has_more = len(course_ids) > size
         if has_more:
             course_ids = course_ids[:size]
+        if not course_ids:
+            return {"courses": [], "has_more": has_more}
+        stmt = select(Course).where(Course.course_id.in_(course_ids))
+        course_map = {c.course_id: c for c in (await self.session.exec(stmt)).all()}
+        stmt = select(Teacher.id, Teacher.username)
+        teacher_map = {t_id: t_name for t_id, t_name in (await self.session.exec(stmt)).all()}
         courses = []
         for cid in course_ids:
-            stmt = select(Course).where(Course.course_id == cid)
-            course = (await self.session.exec(stmt)).one_or_none()
+            course = course_map.get(cid)
             if not course:
                 continue
-            stmt = select(Teacher.username).where(Teacher.id == course.teacher_id)
-            teacher_name = (await self.session.exec(stmt)).first() or ""
+            teacher_name = teacher_map.get(course.teacher_id, "")
             course_id = str(course.course_id)
             courses.append(
                 {
@@ -589,9 +585,6 @@ class CourseService:
                     "course_name": course.course_name,
                     "teacher_name": teacher_name,
                     "course_cover": course.course_cover,
-                    "id": course_id,
-                    "name": course.course_name,
-                    "teacher": teacher_name,
                 }
             )
         return {"courses": courses, "has_more": has_more}
@@ -878,4 +871,4 @@ class CourseService:
         if course:
             course.teaching_analysis = analysis_text
             self.session.add(course)
-            await self.session.commit()
+            await self.session.flush()

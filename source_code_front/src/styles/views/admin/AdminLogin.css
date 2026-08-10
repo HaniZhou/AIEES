@@ -85,6 +85,25 @@
   bottom: -22px;
   color: #ff4d4f;
   font-size: 13px;
+  max-width: calc(100% - 32px);
+  line-height: 1.4;
+}
+.form-item-wrapper :deep(.van-field__right-icon) {
+  display: flex;
+  align-items: center;
+}
+.field-pwd-icon {
+  font-size: 18px;
+  color: #969799;
+  cursor: pointer;
+  padding: 0 2px;
+  margin-left: 10px;
+  display: inline-flex;
+  align-items: center;
+  line-height: 1;
+}
+.field-pwd-icon:active {
+  color: #666666;
 }
 .shake {
   animation: horizontal-shake 0.4s cubic-bezier(.36,.07,.19,.97) both;

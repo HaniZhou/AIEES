@@ -70,6 +70,8 @@ class Database:
             except Exception:
                 await session.rollback()
                 raise
+            finally:
+                await session.close()
 
     async def dispose(self):
         """销毁连接池所有连接，释放数据库资源"""

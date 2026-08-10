@@ -32,7 +32,7 @@
           <div class="org-info-bar">
             <div class="org-info-left">
               <span class="org-info-name">{{ selectedOrg.organization_name }}</span>
-              <span class="org-info-prefix">前缀：{{ selectedOrg.prefix || '无' }}</span>
+              <span class="org-info-prefix">识别编码：{{ selectedOrg.prefix || '无' }}</span>
               <van-icon name="edit" class="class-action-icon edit" @click="openOrgModal('edit', selectedOrg)" />
             </div>
             <button class="btn-delete-org" @click="handleDeleteOrg">删除组织</button>
@@ -292,8 +292,8 @@
             </select>
           </div>
           <div class="modal-field-group">
-            <span class="modal-field-label">前缀</span>
-            <input type="text" class="modal-field-input" v-model="orgForm.prefix" placeholder="请输入登录前缀 (如 gdpu)" />
+            <span class="modal-field-label">识别编码</span>
+            <input type="text" class="modal-field-input" v-model="orgForm.prefix" placeholder="请输入识别编码 (如 gdpu)" />
           </div>
           <div class="modal-actions">
             <button class="modal-btn modal-btn-cancel" @click="showOrgModal = false">取消</button>

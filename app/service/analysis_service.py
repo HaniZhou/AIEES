@@ -1,9 +1,14 @@
+import json
+
 from sqlmodel import select
 from sqlmodel.ext.asyncio.session import AsyncSession
 
+from app.core.ai_client import llm
 from app.core.database import db
 from app.core.exceptions import AppBusinessException
+from app.core.prompts import Prompt
 from app.model.models import AnalysisDescription, AnalysisTask, AnalysisTaskCompletion, Course, CourseRegistrationRecord
+from app.service.student_service import StudentService
 from app.util.time_util import format_utc_time, normalize_chat_history
 from fastapi import Depends
 
@@ -57,6 +62,29 @@ class AnalysisService:
             )
             self.session.add(new_record)
         await self.session.flush()
+
+    async def generate_student_course_analysis(
+        self, course_id: str, student_id: str, current_task_id: int, current_task_results: list
+    ) -> None:
+        """生成并持久化学生课程学情分析（独立 session 由调用方决定 commit）"""
+        student_svc = StudentService(session=self.session)
+        context_data = await student_svc.get_student_course_context(
+            course_id,
+            student_id,
+            current_task_id,
+            current_task_results,
+        )
+        if not context_data:
+            llm.logger.warning(f"Analysis context empty for student {student_id} in course {course_id}")
+            return
+        json_str = json.dumps(context_data, ensure_ascii=False, indent=2)
+        sys_prompt = Prompt.STUDENT_LEARNING_ANALYSIS_SYSTEM_PROMPT.format(json_data=json_str)
+        analysis_text = await llm.generate_analysis_text(sys_prompt, "请开始分析。")
+        await self.upsert_student_analysis_description(
+            course_id=course_id,
+            student_id=student_id,
+            analysis_content=analysis_text,
+        )
 
     async def get_gai_tasks_by_course(self, course_id, user_id: str, role: str) -> list[dict]:
         stmt = select(Course).where(Course.course_id == course_id)

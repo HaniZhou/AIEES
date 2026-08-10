@@ -3,6 +3,15 @@
 from app.core.exceptions import AppBusinessException
 
 
+def replace_id_with_content(answer: str | list[str] | None, options_map: dict[str, str]) -> str | list[str] | None:
+    """将选项 ID 替换为真实文本内容"""
+    if not answer:
+        return answer
+    if isinstance(answer, list):
+        return [options_map.get(item, item) for item in answer]
+    return options_map.get(answer, answer)
+
+
 def _validate_task_payload_consistency(quiz: list[dict], answer: list[dict]) -> None:
     """校验题目与答案的ID映射关系及各题型答案字段格式，不匹配则抛异常。"""
     quiz_ids = {q.get("question_id") for q in quiz if q.get("question_id")}

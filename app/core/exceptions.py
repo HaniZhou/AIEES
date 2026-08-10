@@ -19,6 +19,10 @@ def _log_exception(logger: logging.Logger, message: str, exc: BaseException | No
         logger.error(message)
 
 
+# 合法业务状态码（与 docstring 保持一致）
+_VALID_CODES = frozenset((400, 401, 403, 404, 409, 413, 423, 429, 500, 502))
+
+
 # 纯业务异常定义
 class AppBusinessException(Exception):
     """业务阻断异常。
@@ -28,17 +32,28 @@ class AppBusinessException(Exception):
         403 - 无权限
         404 - 资源不存在
         409 - 资源冲突（如已提交过答案）
+        413 - 请求体过大
+        423 - 资源被锁定
         429 - 频率限制
         500 - 系统内部错误
         502 - 上游服务错误
     """
 
     def __init__(self, code: int, message: str, data: dict | None = None, log_module: str = "db"):
-        assert code in (400, 401, 403, 404, 409, 413, 429, 500, 502), f"业务异常 code 必须为 HTTP 状态码，收到: {code}" # TODO：生产中不应该使用asset
+        if code not in _VALID_CODES:
+            raise ValueError(f"业务异常 code 必须为合法 HTTP 状态码，收到: {code}")
         self.code = code
         self.message = message
         self.data = data if data is not None else {}
         self.log_module = log_module
+
+
+class ASRServiceError(Exception):
+    """ASR 服务连接异常（区别于下层传输类型，避免 httpx 内部字段依赖）"""
+
+    def __init__(self, message: str, original_error: Exception | None = None):
+        super().__init__(message)
+        self.original_error = original_error
 
 
 # 错误响应构造器（内部使用，路由层通过 raise AppBusinessException 走全局拦截器统一处理）
@@ -46,6 +61,11 @@ def _build_error_response(code: int, message: str, data: dict | None = None) -> 
     return JSONResponse(
         status_code=code, content={"code": code, "message": message, "data": data if data is not None else {}}
     )
+
+
+# 统一 SSE 错误事件载荷（信封与 REST 错误响应一致）
+def sse_error_response(code: int, message: str, data: dict | None = None) -> dict:
+    return {"code": code, "message": message, "data": data if data is not None else {}}
 
 
 # 预置业务日志器（统一写入 app.log，通过名称区分模块）

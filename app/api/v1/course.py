@@ -7,7 +7,7 @@ from fastapi.responses import JSONResponse
 from app.api.dependencies import require_student, require_student_or_teacher, require_teacher
 from app.common.response import response_success
 from app.common.tools import generate_course_code, remove_file, write_image
-from app.core.security import verify_token_return_payload
+from app.core.database import db
 from app.schema.chapter import ChapterBatchPayload, SectionFeedbackRequest
 from app.schema.course import CourseInfo, CourseUpdate, JoinCourseRequest
 from app.schema.enums import RoleType
@@ -75,7 +75,7 @@ async def get_teacher_courses(
     course_svc: CourseService = Depends(CourseService),
 ):
     courses = await course_svc.get_teacher_courses_page(payload.id, page)
-    return response_success({"courses": courses})
+    return response_success(courses)
 
 
 @router.delete("/{course_id}", description="删除课程")
@@ -248,12 +248,10 @@ async def get_analysis_ai_text_for_student_study(
 #  学生端接口
 @router.get("/student", description="获取学生已加入课程")
 async def get_student_courses(
-    payload: Annotated[TokenData, Depends(verify_token_return_payload)],
+    payload: Annotated[TokenData, Depends(require_student)],
     page: int = Query(default=1, ge=1, description="页码，从1开始"),
     course_svc: CourseService = Depends(CourseService),
 ):
-    if payload.role != RoleType.student:
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="无权访问")
     data = await course_svc.get_student_courses_page(payload.id, page)
     return response_success(data)
 
@@ -261,11 +259,9 @@ async def get_student_courses(
 @router.post("/join", description="加入班级（提交邀请码）")
 async def join_course(
     req: JoinCourseRequest,
-    payload: Annotated[TokenData, Depends(verify_token_return_payload)],
+    payload: Annotated[TokenData, Depends(require_student)],
     course_svc: CourseService = Depends(CourseService),
 ):
-    if payload.role != RoleType.student:
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="仅学生可加入课程")
     course_id = await course_svc.join_course_by_code(payload.id, req.invite_code)
     return response_success({"course_id": course_id})
 
@@ -304,13 +300,18 @@ async def submit_task_answer(
     completion_id = await task_svc.submit_task_answer(
         course_id, task_id, token_data.id, payload.model_dump()["answers"]
     )
+    await task_svc.session.commit()
 
     try:
         await process_task_grading_job.kiq(
             task_completion_id=completion_id, course_id=str(course_id), student_id=token_data.id, task_id=task_id
         )
     except Exception as exc:
-        await task_svc.update_grading_result(completion_id, 0, f"评分队列异常: {str(exc)}")
+        # 独立会话落库：不受本请求事务 rollback 影响，保证评分状态可恢复
+        async with db.async_session_factory() as fallback_session:
+            fallback_svc = TaskService(session=fallback_session)
+            await fallback_svc.update_grading_result(completion_id, 0, f"评分队列异常: {str(exc)}")
+            await fallback_session.commit()
         raise HTTPException(status_code=502, detail="评分服务暂不可用，请稍后重试") from exc
 
     return response_success({"task_id": task_id, "status": "grading"})
@@ -334,11 +335,11 @@ async def submit_gai_task(
     payload: GaiSubmitRequest,
     token_data: Annotated[TokenData, Depends(require_student)],
     task_svc: TaskService = Depends(TaskService),
-    analysis_svc: AnalysisService = Depends(AnalysisService),
 ):
     from app.task.job.gai_analysis import process_gai_analysis_job
 
     completion_id = await task_svc.submit_gai_task(course_id, task_id, token_data.id, payload.messages)
+    await task_svc.session.commit()
     try:
         await process_gai_analysis_job.kiq(
             task_id=task_id,
@@ -346,7 +347,11 @@ async def submit_gai_task(
             messages=payload.messages,
         )
     except Exception as exc:
-        await analysis_svc.update_gai_task_analysis_result(completion_id, f"分析队列异常: {str(exc)}")
+        # 独立会话落库：不受本请求事务 rollback 影响，保证分析状态可恢复
+        async with db.async_session_factory() as fallback_session:
+            fallback_svc = AnalysisService(session=fallback_session)
+            await fallback_svc.update_gai_task_analysis_result(completion_id, f"分析队列异常: {str(exc)}")
+            await fallback_session.commit()
         raise HTTPException(status_code=502, detail="分析服务暂不可用，请稍后重试") from exc
 
     return response_success({})

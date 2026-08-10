@@ -29,11 +29,14 @@ class RequestIDMiddleware(BaseHTTPMiddleware):
         start_time = time.time()
         try:
             response = await call_next(request)
-        except Exception: # TODO：错误日志未来在这里统一处理，避免重复记录；或者做拓展；考虑登陆信息需要记录吗？（我认为不用）；asr请求失败只需要记录完全失败
+        except Exception as exc:
+            # 兜底日志：只记单行摘要，不附堆栈。
+            # 全堆栈由 global_system_exception_handler 统一记入 biz.system，避免同一异常重复记录。
+            # 不记录登录失败/验证码等敏感信息；ASR 中间态失败由 ai_client 自行记录，
+            # 此处仅兜底异常处理器无法转换的异常（如 SSE 推流中途断开的异常）以及处理器自身的异常。
             logger.error(
-                "✗ %s %s (unhandled exception during request)",
-                request.method, request.url.path,
-                exc_info=True,
+                "✗ %s %s 未捕获异常: %s",
+                request.method, request.url.path, type(exc).__name__,
             )
             raise
 

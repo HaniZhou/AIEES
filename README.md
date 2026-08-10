@@ -349,6 +349,8 @@ AIEES/
 │   ├── util/                     # 工具函数
 │   │   ├── captcha_util.py       # 验证码
 │   │   └── time_util.py          # 时间工具
+│   ├── test/                     # 测试与本地开发指南
+│   │   └── README.md             # 本地开发环境搭建说明
 │   └── main.py                   # FastAPI 入口
 │
 ├── source_code_front/            # 前端 Vue 源码
@@ -391,18 +393,18 @@ AIEES/
 │   └── videos/                   # 视频文件
 │
 ├── fastapi/                      # 后端 Docker 构建
-│   ├── Dockerfile                # 后端镜像构建（基于 uv）
-│   ├── pyproject.toml            # Python 依赖与项目配置
-│   └── uv.lock                   # 依赖锁定文件
+│   └── Dockerfile                # 后端镜像构建（基于 uv，多阶段）
 ├── nginx/                        # Nginx 配置目录
-│   └── nginx.conf                # Nginx 配置
+│   ├── nginx.conf                # 生产 Nginx 配置
+│   └── nginx.dev.conf            # 开发 Nginx 配置（本地开发模式使用）
 │
 ├── .env                          # 环境变量配置（会注入 Docker 容器）
 ├── .env.example                  # 环境变量模板
 ├── .dockerignore                 # Docker 构建忽略规则
-├── docker-compose.yml            # Docker Compose 编排
-├── pyproject.toml                # 项目元数据（同 fastapi/pyproject.toml）
-├── uv.lock                       # 依赖锁定文件（同 fastapi/uv.lock）
+├── docker-compose.yml            # 生产 Docker Compose 编排
+├── docker-compose.dev.yml        # 本地开发 Docker Compose 编排
+├── pyproject.toml                # Python 依赖与项目配置（Docker 构建使用）
+├── uv.lock                       # 依赖锁定文件
 └── README.md                     # 本文件
 ```
 
@@ -452,7 +454,7 @@ class Limit:
     MAX_PDF_SIZE: int = 50 * 1024 * 1024     # 50MB
 ```
 
-同时修改 `nginx/nginx.conf` 中的 `client_max_body_size 500M;`。
+同时修改 `nginx/nginx.conf` 中的 `client_max_body_size 500M;`（本地开发为 `nginx/nginx.dev.conf`，修改后需重启 nginx / nginx-dev 容器）。
 
 ### Q: 如何备份数据库？
 

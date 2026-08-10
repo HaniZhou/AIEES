@@ -36,11 +36,12 @@ def create_access_token(payload: dict, expires_delta: timedelta | None = None):
     函数目的：生成 JWT access token。
     参数信息：
         - payload: dict，token 载荷（必须包含 id、role）。
-        - expires_delta: timedelta | None，自定义过期时长，为 None 则使用默认 15 分钟。
+        - expires_delta: timedelta | None，自定义过期时长，为 None 则使用配置默认值。
     返回值：str，编码后的 JWT 字符串。
     """
     to_encode = payload.copy()
-    expire = datetime.now(UTC) + expires_delta if expires_delta else datetime.now(UTC) + timedelta(minutes=15)
+    default_expire = timedelta(minutes=SecretConfig.ACCESS_TOKEN_EXPIRE_MINUTES)
+    expire = datetime.now(UTC) + (expires_delta if expires_delta else default_expire)
     to_encode.update({"exp": expire})
     encoded_jwt = jwt.encode(to_encode, SecretConfig.SECRET_KEY, algorithm=SecretConfig.ALGORITHM)
     return encoded_jwt

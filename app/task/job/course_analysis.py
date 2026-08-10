@@ -55,6 +55,7 @@ async def process_single_course_analysis_job(course_id: str):
         async with db.async_session_factory() as session:
             svc = CourseService(session=session)
             await svc.update_teaching_analysis(uuid.UUID(course_id), analysis_text)
+            await session.commit()
         job_logger.info(f"课程 {course_id} 教学分析更新成功")
     except Exception as e:
         job_logger.error(f"课程 {course_id} 分析过程发生异常: {str(e)}", exc_info=True)

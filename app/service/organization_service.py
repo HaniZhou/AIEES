@@ -32,7 +32,7 @@ class OrganizationService:
         existing = (await self.session.exec(stmt)).one_or_none()
         if existing:
             return existing.organization_id
-        org = Organization(organization_name=org_name, phase=phase, prefix=prefix)
+        org = Organization(organization_name=org_name, phase=phase, prefix=prefix.rstrip("_"))
         self.session.add(org)
         await self.session.flush()
         await self.session.refresh(org)
@@ -59,6 +59,8 @@ class OrganizationService:
             raise AppBusinessException(404, "组织不存在")
         for key, value in update_data.items():
             if hasattr(org, key) and value is not None:
+                if key == "prefix":
+                    value = value.rstrip("_")
                 setattr(org, key, value)
         self.session.add(org)
         await self.session.flush()
@@ -112,10 +114,12 @@ class OrganizationService:
         filters = []
         if keyword:
             filters.append(Organization.organization_name.like(f"%{keyword}%"))
-        rows, total = await paginate(self.session, Organization, page, size, filters=filters or None, order_col=Organization.organization_id)
+        rows, total = await paginate(
+            self.session, Organization, page, size, filters=filters or None, order_col=Organization.organization_id
+        )
         result_list = [
             {
-                "organization_id": str(org.organization_id),
+                "organization_id": org.organization_id,
                 "organization_name": org.organization_name,
                 "prefix": org.prefix,
                 "phase": org.phase.value,
@@ -128,7 +132,9 @@ class OrganizationService:
         filters = [StudentClass.organization_id == organization_id]
         if keyword:
             filters.append(StudentClass.class_name.like(f"%{keyword}%"))
-        rows, total = await    paginate(self.session, StudentClass, page, size, filters=filters, order_col=StudentClass.class_id)
+        rows, total = await paginate(
+            self.session, StudentClass, page, size, filters=filters, order_col=StudentClass.class_id
+        )
         result_list = [ClassRead.model_validate(c).model_dump(mode='json') for c in rows]
         return {"list": result_list, "total": total}
 

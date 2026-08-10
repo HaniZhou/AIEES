@@ -35,16 +35,21 @@
         <!-- 账号输入框 -->
         <div class="form-item-wrapper" :class="{ 'has-error': errors.accountId, 'shake': shaking.accountId }">
           <van-field v-model="form.accountId" :label="is_stu ? '学号' : '工号'"
-                     :placeholder="`请输入${is_stu ? '学号' : '工号'}`" :border="false" clearable
+                     :placeholder="`请输入${is_stu ? '学号' : '工号'}`" :border="false"
                      @focus="clearError('accountId')"/>
-          <div class="error-msg" v-if="errors.accountId">不能为空</div>
+          <div class="error-msg" v-if="errors.accountId">{{ errorMsgs.accountId }}</div>
         </div>
 
         <!-- 密码输入框 (增加了 focus 和 blur 事件来控制大黄脸闭眼) -->
         <div class="form-item-wrapper" :class="{ 'has-error': errors.password, 'shake': shaking.password }">
-          <van-field v-model="form.password" type="password" label="密码" placeholder="请输入密码" :border="false"
-                     clearable @focus="handlePasswordFocus" @blur="isPasswordFocused = false"/>
-          <div class="error-msg" v-if="errors.password">不能为空</div>
+          <van-field v-model="form.password" :type="showPassword ? 'text' : 'password'" label="密码" placeholder="请输入密码" :border="false"
+                     @focus="handlePasswordFocus" @blur="isPasswordFocused = false">
+            <template #right-icon>
+              <van-icon v-if="form.password" :name="showPassword ? 'eye-o' : 'closed-eye'" class="field-pwd-icon"
+                        @click="togglePasswordVisible"/>
+            </template>
+          </van-field>
+          <div class="error-msg" v-if="errors.password">{{ errorMsgs.password }}</div>
         </div>
 
         <!-- 验证码区域 -->
@@ -61,7 +66,7 @@
                 @focus="clearError('captcha')"
             />
           </div>
-          <div class="error-msg" v-if="errors.captcha">不能为空</div>
+          <div class="error-msg" v-if="errors.captcha">{{ errorMsgs.captcha }}</div>
         </div>
 
       </div>
@@ -119,7 +124,6 @@
 <script setup>
 import { ref, reactive, onBeforeUnmount } from 'vue'
 import { useRouter } from 'vue-router'
-import { showToast } from 'vant'
 import { auth, getOrganizations, getCaptcha } from "@/api/utils.js"
 
 const router = useRouter()
@@ -128,6 +132,11 @@ const router = useRouter()
 const is_stu = ref(true)
 const loading = ref(false)
 const isPasswordFocused = ref(false)
+const showPassword = ref(false)
+
+const togglePasswordVisible = () => {
+  showPassword.value = !showPassword.value
+}
 
 const form = reactive({
   orgObj: null,
@@ -140,6 +149,12 @@ const errors = reactive({
   accountId: false,
   password: false,
   captcha: false
+})
+const errorMsgs = reactive({
+  organization: '',
+  accountId: '',
+  password: '',
+  captcha: ''
 })
 const shaking = reactive({
   organization: false,
@@ -161,8 +176,6 @@ const switchRole = () => {
   if (loading.value) return
   form.accountId = ''
   form.password = ''
-  form.orgObj = null
-  form.orgName = ''
   captchaCode.value = ''
   Object.keys(errors).forEach(key => {
     errors[key] = false
@@ -173,14 +186,19 @@ const switchRole = () => {
 
 const clearError = (field) => {
   errors[field] = false
+  errorMsgs[field] = ''
 }
 
-const triggerError = (field) => {
+const triggerError = (field, msg = '') => {
   errors[field] = true
-  shaking[field] = true
-  setTimeout(() => {
-    shaking[field] = false
-  }, 400)
+  errorMsgs[field] = msg
+  shaking[field] = false
+  requestAnimationFrame(() => {
+    shaking[field] = true
+    setTimeout(() => {
+      shaking[field] = false
+    }, 450)
+  })
 }
 
 const handlePasswordFocus = () => {
@@ -284,19 +302,19 @@ const openOrgPopup = () => {
 const handleLogin = async () => {
   let isValid = true
   if (!form.orgObj) {
-    triggerError('organization')
+    triggerError('organization', '请选择学校')
     isValid = false
   }
   if (!form.accountId || form.accountId.trim() === '') {
-    triggerError('accountId')
+    triggerError('accountId', '不能为空')
     isValid = false
   }
   if (!form.password || form.password.trim() === '') {
-    triggerError('password')
+    triggerError('password', '不能为空')
     isValid = false
   }
   if (showCaptcha.value && (!captchaCode.value || captchaCode.value.trim() === '')) {
-    triggerError('captcha')
+    triggerError('captcha', '不能为空')
     isValid = false
   }
 
@@ -305,7 +323,8 @@ const handleLogin = async () => {
   const rawId = form.accountId.trim()
   const password = form.password.trim()
   const role = is_stu.value ? "student" : "teacher"
-  const finalAccountId = `${form.orgObj.prefix}${rawId}`
+  const orgPrefix = (form.orgObj.prefix || '').replace(/_+$/, '')
+  const finalAccountId = orgPrefix ? `${orgPrefix}_${rawId}` : rawId
 
   const payload = {
     id: finalAccountId,
@@ -320,7 +339,7 @@ const handleLogin = async () => {
 
   loading.value = true
 
-  const res = await auth(payload).catch((err) => {
+  const res = await auth(payload, { skipToast: true }).catch((err) => {
     loading.value = false
     if (err.response?.data) {
       return err.response.data
@@ -350,7 +369,6 @@ const handleLogin = async () => {
 
     await router.push(resRole === 'student' ? '/index' : '/teacher/index')
   } else {
-    showToast(res.message)
     const errorPayload = res.data
 
     if (res.code === 423 && errorPayload.locked) {
@@ -358,13 +376,21 @@ const handleLogin = async () => {
       lockMinutes.value = Math.ceil((errorPayload.lock_ttl || 900) / 60)
       showCaptcha.value = false
       startLockCountdown()
+      triggerError('password', res.message)
+    } else if (res.code === 403 && errorPayload.need_captcha) {
+      showCaptcha.value = true
+      fetchCaptcha()
+      triggerError('captcha', res.message)
+    } else if (res.code === 400) {
+      fetchCaptcha()
+      triggerError('captcha', res.message)
     } else if (errorPayload.need_captcha) {
       showCaptcha.value = true
       fetchCaptcha()
-    }
-
-    if (res.code === 400) {
-      fetchCaptcha()
+      triggerError('password', res.message)
+    } else {
+      triggerError('accountId')
+      triggerError('password', res.message || '登录失败，请检查账号或密码')
     }
   }
 

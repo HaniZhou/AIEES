@@ -1,8 +1,8 @@
 import request from "../utils/request";
 
 /** 管理员鉴权 */
-export function adminAuth(payload) {
-    return request.post("auth/token", payload);
+export function adminAuth(payload, config) {
+    return request.post("auth/token", payload, config);
 }
 
 /** 组织管理 */

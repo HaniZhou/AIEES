@@ -18,7 +18,7 @@ from app.schema.user import (
 )
 from app.service.auth_service import AuthService
 from app.util.captcha_util import generate_math_captcha
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends
 
 router = APIRouter()
 auth_route_logger = get_logger(__name__)
@@ -81,11 +81,6 @@ async def login_for_access_token(
             response_data["need_captcha"] = True
         if failure_info["status"] == "locked":
             response_data["locked"] = True
-        auth_route_logger.warning(
-            f"Login rejected for user [{user_id}], "
-            f"fail_count={failure_info['fail_count']}, "
-            f"status={failure_info['status']}"
-        )
         raise AppBusinessException(401, "登录失败，用户名或密码错误", data=response_data)
 
     await rate_limiter.clear_login_failures(user_id)
@@ -99,7 +94,6 @@ async def login_for_access_token(
             payload=payload_data,
             expires_delta=access_token_expires,
         )
-        auth_route_logger.info(f"User [{user_id}] (role={user.role.value}) login succeeded")
         return response_success(
             {
                 "access_token": access_token,
@@ -138,4 +132,4 @@ async def update_password(
             raise AppBusinessException(500, "更新失败，请稍后重试")
     except Exception as e:
         auth_route_logger.error(f"DB error updating password for user [{user_id}]: {str(e)}")
-        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="服务器内部错误") from e
+        raise AppBusinessException(500, "更新密码失败，请稍后重试", log_module="db") from e
